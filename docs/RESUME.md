@@ -5,4 +5,4 @@
 - Designed a rule-based **"Model Doctor"** that detects vanishing/exploding gradients, dead ReLUs, saturation, bad learning rates and overfitting from per-layer training telemetry, with evidence links and one-click fixes; **29 deterministic unit tests** on synthetic histories.
 - Added **time travel** (bounded snapshot history with memory-aware thinning) so every view re-renders exactly as the network was at any recorded step.
 - Trained an MLP/CNN on **MNIST in the browser** (~2,100 img/s, ~4.7 s per 10k-image epoch on WebGPU on my laptop) with filter/feature-map visualisation, confusion matrix and a draw-a-digit pad.
-- Tooling: TypeScript (strict), Vitest (74 tests), Playwright e2e, ESLint/Prettier, GitHub Actions CI.
+- Tooling: TypeScript (strict), Vitest (91 tests), Playwright e2e, ESLint/Prettier, GitHub Actions CI.

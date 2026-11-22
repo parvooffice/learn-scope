@@ -24,6 +24,11 @@ test('playground trains, the boundary changes, and the timeline travels back', a
   const picAfter = await boundary.evaluate((c) => (c as HTMLCanvasElement).toDataURL())
   expect(picAfter).not.toEqual(picBefore)
 
+  // the Model Doctor keeps up with a fast stream of snapshots (regression: a debounce used to starve it)
+  await expect(
+    page.locator('article[aria-label$="diagnosis"], article[aria-label*=" diagnosis: "]').first(),
+  ).toBeVisible()
+
   // pause, then scrub the timeline back to the start
   await page.getByRole('button', { name: 'Pause training' }).click()
   const latestStep = await num('stat-step')
@@ -55,4 +60,23 @@ test('backprop explainer walks through the steps with live numbers', async ({ pa
   await expect(
     page.getByText(/hand-written chain rule vs autograd engine: max difference = [0-9.]+e[+-]\d+/),
   ).toBeVisible()
+})
+
+test('compare runs two experiments and the Doctor flags the huge learning rate in B only', async ({
+  page,
+}) => {
+  await page.goto('/#/compare')
+  const cell = (row: string, col: 1 | 2) =>
+    page.locator('tr', { hasText: row }).locator('td').nth(col)
+  await expect
+    .poll(async () => Number(await cell('Steps', 1).innerText()), { timeout: 90_000 })
+    .toBeGreaterThan(100)
+  await expect.poll(async () => Number(await cell('Steps', 2).innerText())).toBeGreaterThan(100)
+
+  await page.getByLabel('Preset comparison').selectOption('lr')
+  const runB = page.getByRole('region', { name: 'Run B' })
+  const runA = page.getByRole('region', { name: 'Run A' })
+  // B (lr 1.5) gets at least one warning/critical finding; A (lr 0.01) is healthy
+  await expect(runB.getByText(/^(critical|warn)$/).first()).toBeVisible({ timeout: 90_000 })
+  await expect(runA.getByText('No problems detected')).toBeVisible({ timeout: 90_000 })
 })

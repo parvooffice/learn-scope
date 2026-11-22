@@ -13,6 +13,11 @@ const FEATURES = [
     body: 'Deterministic rules read the telemetry and diagnose vanishing gradients, dead ReLUs, overfitting and bad learning rates. Each comes with evidence and a one-click fix.',
   },
   {
+    icon: '⚖',
+    title: 'Compare experiments',
+    body: 'Run two configurations side by side on the same data (Adam vs SGD, ReLU vs tanh, a sane vs a huge learning rate) and watch the curves, boundaries and Doctor findings diverge.',
+  },
+  {
     icon: '∂',
     title: 'Backprop, visualized',
     body: 'Walk through the forward pass, the loss and the chain rule applied backward, with real numbers from a from-scratch autograd engine.',
@@ -68,7 +73,10 @@ export default function Landing() {
           <Hero />
         </section>
 
-        <section className="mt-16 grid gap-4 sm:grid-cols-2 lg:grid-cols-4" aria-label="Features">
+        <section
+          className="mt-16 grid gap-4 sm:grid-cols-2 xl:grid-cols-5 lg:grid-cols-3"
+          aria-label="Features"
+        >
           {FEATURES.map((f) => (
             <article key={f.title} className="rounded-2xl border border-line bg-panel p-4">
               <div

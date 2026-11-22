@@ -30,7 +30,7 @@ src/
  history ◀─rAF flush──── postMessage(snapshot, [weight buffers])   (transferable)
     │
     ├─ views read viewSnapshot(selectedStep): the live head, or the time-travel target
-    └─ Doctor: diagnose(history) debounced 250 ms ─▶ diagnoses ─▶ evidence links
+    └─ Doctor: diagnose(history) throttled to 4 Hz ─▶ diagnoses ─▶ evidence links
 ```
 
 - **The worker owns the model.** The UI thread never touches TensorFlow.js, so training cannot block rendering. The TF.js bundle (~2 MB) is a lazy chunk fetched only when a page that needs it opens; the first-load JS is 236 KB.
@@ -74,7 +74,22 @@ A fix that only changes `lr`/`l2`/`batchSize` and doesn't need a restart is appl
 - UI frame rate while training the default spiral config: **60 fps, p95 frame 16.9 ms, no long tasks** (headless Chrome, WebGPU, 1440×900; reproduce with `npm run perf`). Embedded or background browser tabs throttle `requestAnimationFrame`, so measure in a real foreground window.
 - Tiny networks are **latency-bound, not compute-bound**: on a GPU each step costs a few kernel launches, so a 2-8-8-1 net is not faster on WebGPU than on CPU. The GPU pays off on MNIST.
 
-## Not built (stretch goals)
+## Compare (two runs)
 
-Tiny transformer mode, experiment side-by-side comparison, loss landscape, ONNX import and the hand-written WebGPU kernel benchmark are **not implemented**.
+`createRunStore(client)` in `src/store/run.ts` is a factory: each call gives an independent run with its own history buffer, timers, diagnoses and worker connection.
+The playground uses one shared instance (`useRun`); the Compare page creates two with `createWorkerClient()` (two workers) and tears them down on unmount.
+Data settings (dataset, noise, samples, split, seed) are shared so differences come only from the settings under test.
+
+## Loss landscape
+
+`src/engine/landscape.ts` follows Li et al. (2018): two random directions in weight space, **Gram–Schmidt orthogonalised** and **rescaled per layer** to that layer's weight norm, then the loss is evaluated on a 31×31 grid of `w + α·d1 + β·d2` with the CPU forward pass (~150 ms, yielding to the UI every ~30 ms).
+The training path is each snapshot's weights projected onto (d1, d2). It can leave the picture because the real path uses many more than two directions; the panel says so.
+
+## A bug worth remembering
+
+The Model Doctor was scheduled with a **debounce** (restart a 250 ms timer on every snapshot batch). At 60 fps a new batch arrives every frame, so the timer never fired and the Doctor silently starved; it only worked in a throttled embedded browser. It is now a **throttle** (one run scheduled at a time, reading the newest history), and the Playwright test asserts a diagnosis appears. I confirmed the test fails against the old code.
+
+## Not built
+
+The tiny transformer mode, ONNX import and the hand-written WebGPU kernel benchmark are **not implemented**.
 The `Trainer` interface and the snapshot/protocol design leave room for them.

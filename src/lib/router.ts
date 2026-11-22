@@ -1,12 +1,12 @@
 import { useSyncExternalStore } from 'react'
 
-export type Route = 'home' | 'playground' | 'mnist' | 'backprop' | 'about'
+export type Route = 'home' | 'playground' | 'compare' | 'mnist' | 'backprop' | 'about'
 
 function parse(): { route: Route; query: URLSearchParams } {
   const raw = window.location.hash.replace(/^#\/?/, '')
   const [path, qs] = raw.split('?')
   const r = (path || 'home') as Route
-  const known: Route[] = ['home', 'playground', 'mnist', 'backprop', 'about']
+  const known: Route[] = ['home', 'playground', 'compare', 'mnist', 'backprop', 'about']
   return { route: known.includes(r) ? r : 'home', query: new URLSearchParams(qs ?? '') }
 }
 

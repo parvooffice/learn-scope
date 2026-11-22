@@ -37,6 +37,11 @@ export default function About() {
               its fix.
             </li>
             <li>
+              <b className="text-ink">Compare</b>: pick “Sensible vs huge learning rate” and watch
+              run B blow up while the Doctor diagnoses it. In the Playground, press Compute on the
+              loss landscape.
+            </li>
+            <li>
               <b className="text-ink">Backprop</b>: step through one training step with real
               numbers.
             </li>

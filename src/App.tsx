@@ -5,6 +5,7 @@ import Landing from './app/Landing'
 
 // Heavy pages (TensorFlow.js, charts) are code-split so the landing page stays tiny.
 const Playground = lazy(() => import('./app/playground/Playground'))
+const Compare = lazy(() => import('./app/compare/Compare'))
 const Backprop = lazy(() => import('./app/backprop/Backprop'))
 const Mnist = lazy(() => import('./app/mnist/Mnist'))
 const About = lazy(() => import('./app/About'))
@@ -26,6 +27,7 @@ export default function App() {
         <Suspense fallback={<Loading />}>
           {route === 'home' && <Landing />}
           {route === 'playground' && <Playground />}
+          {route === 'compare' && <Compare />}
           {route === 'backprop' && <Backprop />}
           {route === 'mnist' && <Mnist />}
           {route === 'about' && <About />}

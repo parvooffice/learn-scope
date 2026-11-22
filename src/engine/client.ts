@@ -25,3 +25,25 @@ export function onMessage(fn: (m: FromWorker) => void) {
   ensure()
   return () => listeners.delete(fn)
 }
+
+/** An independent worker connection (used by Compare, which runs two experiments at once). */
+export function createWorkerClient() {
+  const w = new Worker(new URL('../worker/training.worker.ts', import.meta.url), {
+    type: 'module',
+  })
+  const subs = new Set<(m: FromWorker) => void>()
+  w.onmessage = (e: MessageEvent<FromWorker>) => subs.forEach((l) => l(e.data))
+  w.onerror = (e) =>
+    subs.forEach((l) => l({ type: 'error', message: e.message || 'Worker crashed' }))
+  return {
+    send: (msg: ToWorker) => w.postMessage(msg),
+    onMessage: (fn: (m: FromWorker) => void) => {
+      subs.add(fn)
+      return () => subs.delete(fn)
+    },
+    terminate: () => {
+      subs.clear()
+      w.terminate()
+    },
+  }
+}

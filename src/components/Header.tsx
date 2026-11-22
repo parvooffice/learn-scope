@@ -3,6 +3,7 @@ import { useUI } from '../store/ui'
 
 const LINKS: { route: Route; label: string }[] = [
   { route: 'playground', label: 'Playground' },
+  { route: 'compare', label: 'Compare' },
   { route: 'backprop', label: 'Backprop' },
   { route: 'mnist', label: 'MNIST' },
   { route: 'about', label: 'About' },

@@ -9,13 +9,15 @@ step**, and let a rule-based **Model Doctor** diagnose what is going wrong and s
 
 ## What is in it
 
-| Page             | What it does                                                                                                                                                                                                                           |
-| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Playground**   | 5 toy datasets, a model builder (layers, neurons, activations, optimizer, LR, batch, L2), live decision boundary, network graph (click a neuron to see what it detects), loss/accuracy/gradient/weight/activation charts, time travel. |
-| **Model Doctor** | 7 deterministic, unit-tested rules: exploding & vanishing gradients, dead ReLUs, saturated units, learning rate too high / too low, overfitting. Each gives severity, evidence (jumps to the step), explanation and a one-click fix.   |
-| **Backprop**     | A guided 10-step walk through forward pass → loss → chain rule backward → weight update on a 2-3-1 network, every number computed live by the from-scratch autograd engine.                                                            |
-| **MNIST**        | MLP or small CNN trained on 10k real digits on the GPU: filters, feature maps, confusion matrix, most-confused examples and a draw-a-digit pad.                                                                                        |
-| **Share**        | The full experiment config is encoded in the URL (`#/playground?c=…`).                                                                                                                                                                 |
+| Page               | What it does                                                                                                                                                                                                                                                       |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Playground**     | 5 toy datasets, a model builder (layers, neurons, activations, optimizer, LR, batch, L2), live decision boundary, network graph (click a neuron to see what it detects), loss/accuracy/gradient/weight/activation charts, time travel.                             |
+| **Model Doctor**   | 7 deterministic, unit-tested rules: exploding & vanishing gradients, dead ReLUs, saturated units, learning rate too high / too low, overfitting. Each gives severity, evidence (jumps to the step), explanation and a one-click fix.                               |
+| **Compare**        | Two experiments train side by side on the **same data**, each in its own worker: overlaid loss/accuracy curves, a scoreboard, two boundaries and graphs, and a Doctor per run. Five presets (Adam vs SGD, ReLU vs tanh, huge learning rate, small vs big net, L2). |
+| **Loss landscape** | In the Playground: a 2-D slice of the loss surface around the weights at the step you are viewing, with the training path drawn on it.                                                                                                                             |
+| **Backprop**       | A guided 10-step walk through forward pass → loss → chain rule backward → weight update on a 2-3-1 network, every number computed live by the from-scratch autograd engine.                                                                                        |
+| **MNIST**          | MLP or small CNN trained on 10k real digits on the GPU: filters, feature maps, confusion matrix, most-confused examples and a draw-a-digit pad.                                                                                                                    |
+| **Share**          | The full experiment config is encoded in the URL (`#/playground?c=…`).                                                                                                                                                                                             |
 
 ## Run it locally
 

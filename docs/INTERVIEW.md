@@ -164,3 +164,20 @@ Labelled controls, `aria-label`s on canvases, an "ⓘ What am I looking at?" on 
 
 **50. What are the limits of the Model Doctor?**
 It is heuristic: thresholds were tuned on a handful of runs, so it can miss or misjudge unusual setups. Being rule-based makes it explainable and unit-testable, and each rule documents its evidence.
+
+## Added later: landscape, comparison, debugging
+
+**51. What is a loss landscape slice and what are its limits?**
+The loss depends on every weight; we pick two random orthogonal directions, scale them per layer to the layer's weight norm (so slices are comparable across networks) and plot the loss on that plane. It is a 2-D shadow of a huge space: valleys can look flatter or sharper than they are, and the training path projected onto it can leave the picture. (`engine/landscape.ts`)
+
+**52. Why make the two directions orthogonal?**
+So that projecting a weight vector onto the plane gives exact coordinates; unit test: a point built as c + 0.3·d1 − 0.2·d2 projects back to (0.3, −0.2).
+
+**53. How does Compare keep the comparison fair?**
+Both runs share the dataset, split and seed (and the initialiser seed), each runs in its own worker, and the presets change exactly one idea at a time. Differences therefore come from the setting under test.
+
+**54. How did you reuse the playground logic for two runs?**
+I refactored the singleton store into a `createRunStore(client)` factory (own history, timers, worker connection) and kept the old exports as one default instance, so the playground code didn't change.
+
+**55. Tell me about a bug you found by testing at the real frame rate.**
+The Doctor used a debounce, which starved at 60 fps because snapshots arrive every frame; it only worked in a throttled embedded browser. I changed it to a throttle, added an e2e assertion, and verified the test fails on the old code. Lesson: a test that cannot fail proves nothing.
