@@ -35,7 +35,9 @@ export const deadRelus: Rule = ({ history, config }) => {
     fix: {
       label: 'Switch ReLU layers to GELU (smooth, no hard zero) and restart',
       patch: {
-        layers: config.layers.map((l) => (l.activation === 'relu' ? { ...l, activation: 'gelu' as const } : l)),
+        layers: config.layers.map((l) =>
+          l.activation === 'relu' ? { ...l, activation: 'gelu' as const } : l,
+        ),
       },
       reset: true,
     },

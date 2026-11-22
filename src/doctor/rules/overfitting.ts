@@ -34,7 +34,10 @@ export const overfitting: Rule = ({ history, config }) => {
       : {
           label: 'Use a smaller network (halve the units per layer) and restart',
           patch: {
-            layers: config.layers.map((l) => ({ ...l, units: Math.max(2, Math.round(l.units / 2)) })),
+            layers: config.layers.map((l) => ({
+              ...l,
+              units: Math.max(2, Math.round(l.units / 2)),
+            })),
           },
           reset: true,
         },

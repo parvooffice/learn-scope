@@ -2,7 +2,12 @@ import type { Dataset, DatasetKind } from '../types'
 import { gaussian, mulberry32 } from '../../lib/rng'
 
 /** All generators return points that sit roughly inside [-1.2, 1.2]^2. */
-export function generateDataset(kind: DatasetKind, n: number, noise: number, seed: number): Dataset {
+export function generateDataset(
+  kind: DatasetKind,
+  n: number,
+  noise: number,
+  seed: number,
+): Dataset {
   const rng = mulberry32(seed * 7919 + 13)
   const x = new Float32Array(n * 2)
   const y = new Uint8Array(n)
@@ -47,7 +52,7 @@ export function generateDataset(kind: DatasetKind, n: number, noise: number, see
         // push points away from the axes so the problem is learnable
         px += Math.sign(px) * 0.08
         py += Math.sign(py) * 0.08
-        y[i] = (px > 0) !== (py > 0) ? 1 : 0
+        y[i] = px > 0 !== py > 0 ? 1 : 0
         px += jitter() * 0.6
         py += jitter() * 0.6
         break

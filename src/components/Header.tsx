@@ -21,7 +21,13 @@ export function Header() {
       >
         <svg width="22" height="22" viewBox="0 0 32 32" aria-hidden>
           <rect width="32" height="32" rx="7" fill="var(--panel2)" stroke="var(--border)" />
-          <path d="M5 22 C10 22 10 8 16 8 S22 22 27 22" fill="none" stroke="var(--accent)" strokeWidth="2.6" strokeLinecap="round" />
+          <path
+            d="M5 22 C10 22 10 8 16 8 S22 22 27 22"
+            fill="none"
+            stroke="var(--accent)"
+            strokeWidth="2.6"
+            strokeLinecap="round"
+          />
           <circle cx="16" cy="8" r="2.6" fill="var(--accent)" />
         </svg>
         Learn<span className="text-accent">Scope</span>

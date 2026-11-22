@@ -27,7 +27,17 @@ interface Props {
 const M = { l: 42, r: 8, t: 8, b: 20 }
 
 /** A canvas line chart. Cheap enough to redraw every frame with thousands of points. */
-export function LineChart({ series, height = 150, label, log, yMin, yMax, marker, onPickX, yFormat }: Props) {
+export function LineChart({
+  series,
+  height = 150,
+  label,
+  log,
+  yMin,
+  yMax,
+  marker,
+  onPickX,
+  yFormat,
+}: Props) {
   const xs = series.flatMap((s) => s.x)
   const xMax = xs.length ? Math.max(...xs) : 1
   const xMin = xs.length ? Math.min(...xs) : 0
@@ -49,10 +59,19 @@ export function LineChart({ series, height = 150, label, log, yMin, yMax, marker
     } else if (hi - lo < 1e-9) {
       hi = lo + 1
     }
-    const sx = scaleLinear().domain([xMin, Math.max(xMax, xMin + 1)]).range([M.l, M.l + iw])
+    const sx = scaleLinear()
+      .domain([xMin, Math.max(xMax, xMin + 1)])
+      .range([M.l, M.l + iw])
     const sy = log
-      ? scaleLog().domain([lo, hi]).range([M.t + ih, M.t]).clamp(true)
-      : scaleLinear().domain([lo, hi]).range([M.t + ih, M.t]).nice().clamp(true)
+      ? scaleLog()
+          .domain([lo, hi])
+          .range([M.t + ih, M.t])
+          .clamp(true)
+      : scaleLinear()
+          .domain([lo, hi])
+          .range([M.t + ih, M.t])
+          .nice()
+          .clamp(true)
 
     ctx.font = '10px ui-monospace, Consolas, monospace'
     ctx.textBaseline = 'middle'
@@ -68,7 +87,11 @@ export function LineChart({ series, height = 150, label, log, yMin, yMax, marker
       ctx.lineTo(M.l + iw, y)
       ctx.stroke()
       ctx.fillStyle = text
-      ctx.fillText(yFormat ? yFormat(t) : log ? t.toExponential(0) : Number(t.toPrecision(2)).toString(), M.l - 5, y)
+      ctx.fillText(
+        yFormat ? yFormat(t) : log ? t.toExponential(0) : Number(t.toPrecision(2)).toString(),
+        M.l - 5,
+        y,
+      )
     }
     // x labels
     ctx.textAlign = 'center'

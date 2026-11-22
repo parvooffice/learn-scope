@@ -17,7 +17,7 @@ export function Charts() {
   const snaps = history.toArray()
   const view = useViewSnapshot()
   const steps = snaps.map((s) => s.step)
-  const marker = selectedStep === null ? null : view?.step ?? null
+  const marker = selectedStep === null ? null : (view?.step ?? null)
   const specs = layerSpecs(config)
 
   const loss: Series[] = [
@@ -43,14 +43,29 @@ export function Charts() {
         title="Loss"
         info="Loss is a single number for “how wrong the network is” (lower is better). The teal line is the loss on the training points, the amber line on held-out test points. If the lines drift apart, the network is memorising. Click the chart to time-travel to that step."
       >
-        <LineChart series={loss} label="Training and test loss over steps" marker={marker} onPickX={jumpToStep} yMin={0} />
+        <LineChart
+          series={loss}
+          label="Training and test loss over steps"
+          marker={marker}
+          onPickX={jumpToStep}
+          yMin={0}
+        />
       </Panel>
 
       <Panel
         title="Accuracy"
         info="The fraction of points the network classifies correctly, for training points (teal) and test points (amber). 50% is a coin flip on these balanced datasets."
       >
-        <LineChart series={acc} label="Training and test accuracy over steps" marker={marker} onPickX={jumpToStep} yMin={0} yMax={1} yFormat={(v) => `${Math.round(v * 100)}%`} height={120} />
+        <LineChart
+          series={acc}
+          label="Training and test accuracy over steps"
+          marker={marker}
+          onPickX={jumpToStep}
+          yMin={0}
+          yMax={1}
+          yFormat={(v) => `${Math.round(v * 100)}%`}
+          height={120}
+        />
       </Panel>
 
       <Panel
@@ -58,7 +73,13 @@ export function Charts() {
         title="Gradient size per layer"
         info="The gradient tells each weight which way to move to reduce the loss. This chart shows how large the gradient is in each layer (log scale). If the early layers (L1…) sit far below the output layer, gradients are vanishing and those layers barely learn."
       >
-        <LineChart series={grad} label="Gradient norm per layer over steps, log scale" log marker={marker} onPickX={jumpToStep} />
+        <LineChart
+          series={grad}
+          label="Gradient norm per layer over steps, log scale"
+          log
+          marker={marker}
+          onPickX={jumpToStep}
+        />
       </Panel>
 
       <Panel
@@ -76,7 +97,11 @@ export function Charts() {
                     μ {l.wMean.toFixed(2)} · σ {l.wStd.toFixed(2)}
                   </span>
                 </div>
-                <Histogram hist={l.wHist} color={SERIES[i % SERIES.length]} label={`Weight histogram for layer ${i + 1}`} />
+                <Histogram
+                  hist={l.wHist}
+                  color={SERIES[i % SERIES.length]}
+                  label={`Weight histogram for layer ${i + 1}`}
+                />
               </div>
             ))}
           </div>
@@ -102,13 +127,22 @@ export function Charts() {
                     </span>
                     <span className="num">
                       {act === 'relu' || act === 'gelu' ? (
-                        <span className={l.deadPct > 0.5 ? 'text-pos' : ''}>dead {fmtPct(l.deadPct)}</span>
+                        <span className={l.deadPct > 0.5 ? 'text-pos' : ''}>
+                          dead {fmtPct(l.deadPct)}
+                        </span>
                       ) : (
-                        <span className={l.satPct > 0.6 ? 'text-warn' : ''}>saturated {fmtPct(l.satPct)}</span>
+                        <span className={l.satPct > 0.6 ? 'text-warn' : ''}>
+                          saturated {fmtPct(l.satPct)}
+                        </span>
                       )}
                     </span>
                   </div>
-                  <Histogram hist={l.aHist} color={SERIES[i % SERIES.length]} label={`Activation histogram for layer ${i + 1}`} zeroLine={false} />
+                  <Histogram
+                    hist={l.aHist}
+                    color={SERIES[i % SERIES.length]}
+                    label={`Activation histogram for layer ${i + 1}`}
+                    zeroLine={false}
+                  />
                 </div>
               )
             })}

@@ -23,7 +23,12 @@ const sigmoidCfg = cfgWith({
     { units: 8, activation: 'sigmoid' },
   ],
 })
-const tanhCfg = cfgWith({ layers: [{ units: 8, activation: 'tanh' }, { units: 8, activation: 'tanh' }] })
+const tanhCfg = cfgWith({
+  layers: [
+    { units: 8, activation: 'tanh' },
+    { units: 8, activation: 'tanh' },
+  ],
+})
 
 /** A boring, healthy run: loss falls smoothly, test tracks train. */
 const healthy = (cfg = reluCfg, n = 40) =>
@@ -99,7 +104,10 @@ describe('vanishing gradients', () => {
   })
   it('does not fire for a single hidden layer', () => {
     const one = cfgWith({ layers: [{ units: 4, activation: 'sigmoid' }] })
-    const h = mkHistory(one, 30, () => ({ trainLoss: 0.69, layerOver: (l) => ({ gNorm: [1e-7, 0.3][l] }) }))
+    const h = mkHistory(one, 30, () => ({
+      trainLoss: 0.69,
+      layerOver: (l) => ({ gNorm: [1e-7, 0.3][l] }),
+    }))
     expect(vanishingGradients({ history: h, config: one })).toBeNull()
   })
 })
@@ -127,15 +135,24 @@ describe('dead ReLUs', () => {
 })
 
 describe('learning rate too high', () => {
-  it('fires on a zig-zagging loss and suggests lr/3 live', () => {
+  it('fires on a zig-zagging loss and suggests a safe lr with a restart', () => {
     const history = mkHistory(reluCfg, 30, (i) => ({ trainLoss: i % 2 ? 1.4 : 0.6 }))
     const d = learningRateTooHigh({ history, config: reluCfg })!
     expect(d.evidence.chart).toBe('loss')
     expect(d.fix?.patch.lr).toBeCloseTo(0.01, 5)
-    expect(d.fix?.reset).toBe(false)
+    expect(d.fix?.reset).toBe(true)
+  })
+  it('caps the suggestion at a stable rate for the optimizer (adam at lr 1.5 -> 0.01)', () => {
+    const cfg = { ...reluCfg, lr: 1.5, optimizer: 'adam' as const }
+    const history = mkHistory(cfg, 30, (i) => ({ trainLoss: i % 2 ? 1.4 : 0.6 }))
+    expect(learningRateTooHigh({ history, config: cfg })?.fix?.patch.lr).toBeCloseTo(0.01, 5)
+    const sgd = { ...cfg, optimizer: 'sgd' as const }
+    expect(learningRateTooHigh({ history, config: sgd })?.fix?.patch.lr).toBeCloseTo(0.1, 5)
   })
   it('fires when the loss climbs after having been low', () => {
-    const history = mkHistory(reluCfg, 30, (i) => ({ trainLoss: i < 15 ? 0.5 - i * 0.02 : 0.2 + (i - 15) * 0.1 }))
+    const history = mkHistory(reluCfg, 30, (i) => ({
+      trainLoss: i < 15 ? 0.5 - i * 0.02 : 0.2 + (i - 15) * 0.1,
+    }))
     expect(learningRateTooHigh({ history, config: reluCfg })).not.toBeNull()
   })
   it('does not fire on a smooth decrease', () => {
@@ -149,7 +166,10 @@ describe('learning rate too high', () => {
 
 describe('learning rate too low', () => {
   it('fires when a high loss barely moves for a long time', () => {
-    const history = mkHistory(reluCfg, 60, (i) => ({ trainLoss: 0.69 - i * 0.00002, trainAcc: 0.5 }))
+    const history = mkHistory(reluCfg, 60, (i) => ({
+      trainLoss: 0.69 - i * 0.00002,
+      trainAcc: 0.5,
+    }))
     const d = learningRateTooLow({ history, config: reluCfg })!
     expect(d.fix?.patch.lr).toBeCloseTo(0.09, 5)
     expect(d.fix?.reset).toBe(false)
@@ -194,14 +214,19 @@ describe('overfitting', () => {
 
 describe('saturated units', () => {
   it('fires when most tanh outputs are pinned at ±1', () => {
-    const history = mkHistory(tanhCfg, 12, (i) => ({ layerOver: (l) => (l === 0 ? { satPct: i < 4 ? 0.1 : 0.9 } : {}) }))
+    const history = mkHistory(tanhCfg, 12, (i) => ({
+      layerOver: (l) => (l === 0 ? { satPct: i < 4 ? 0.1 : 0.9 } : {}),
+    }))
     const d = saturatedUnits({ history, config: tanhCfg })!
     expect(d.severity).toBe('critical')
     expect(d.evidence.step).toBe(history[4].step)
     expect(d.fix?.patch.layers?.every((l) => l.activation === 'relu')).toBe(true)
   })
   it('allows saturation once the task is learned (low loss)', () => {
-    const history = mkHistory(tanhCfg, 12, () => ({ trainLoss: 0.05, layerOver: () => ({ satPct: 0.9 }) }))
+    const history = mkHistory(tanhCfg, 12, () => ({
+      trainLoss: 0.05,
+      layerOver: () => ({ satPct: 0.9 }),
+    }))
     expect(saturatedUnits({ history, config: tanhCfg })).toBeNull()
   })
   it('does not fire for ReLU nets or low saturation', () => {

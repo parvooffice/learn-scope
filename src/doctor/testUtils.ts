@@ -1,4 +1,9 @@
-import { DEFAULT_CONFIG, type LayerStats, type PlaygroundConfig, type Snapshot } from '../engine/types'
+import {
+  DEFAULT_CONFIG,
+  type LayerStats,
+  type PlaygroundConfig,
+  type Snapshot,
+} from '../engine/types'
 
 export const emptyHist = () => ({ counts: new Array(24).fill(0), lo: 0, hi: 1 })
 

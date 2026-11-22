@@ -22,7 +22,10 @@ export function viridis(t: number): [number, number, number] {
 }
 
 /** Diverging scale: t in [-1, 1]; negative = blue, positive = red, 0 = neutral grey. */
-export function diverging(t: number, neutral: [number, number, number] = [235, 238, 242]): [number, number, number] {
+export function diverging(
+  t: number,
+  neutral: [number, number, number] = [235, 238, 242],
+): [number, number, number] {
   const x = Math.min(1, Math.max(-1, t))
   const neg: [number, number, number] = [60, 120, 255]
   const pos: [number, number, number] = [240, 80, 70]

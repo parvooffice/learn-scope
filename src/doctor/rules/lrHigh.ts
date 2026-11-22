@@ -4,6 +4,8 @@ import { avg, fmt, last, niceLr } from '../util'
 export const LR_HIGH_WINDOW = 20
 export const LR_HIGH_UP_FRACTION = 0.3
 export const LR_HIGH_RISE = 1.3
+/** Learning rates that are comfortably stable for each optimizer on small networks. */
+export const LR_CEILING = { sgd: 0.1, momentum: 0.05, adam: 0.01 } as const
 
 /**
  * Training loss going UP, or zig-zagging, means the optimizer keeps overshooting the minimum.
@@ -34,6 +36,7 @@ export const learningRateTooHigh: Rule = ({ history, config }) => {
   const rising = nowAvg > best * LR_HIGH_RISE && nowAvg - best > 0.05
 
   if (!(upFraction >= LR_HIGH_UP_FRACTION || rising)) return null
+  const target = niceLr(Math.min(config.lr / 3, LR_CEILING[config.optimizer]))
   const severe = nowAvg > best * 2 && nowAvg - best > 0.2
   return {
     id: 'lr-high',
@@ -46,9 +49,10 @@ export const learningRateTooHigh: Rule = ({ history, config }) => {
       detail: `loss jumped by ${fmt(worstJump)} here`,
     },
     fix: {
-      label: `Lower the learning rate to ${niceLr(config.lr / 3)}`,
-      patch: { lr: niceLr(config.lr / 3) },
-      reset: false,
+      label: `Lower the learning rate to ${target} and restart`,
+      patch: { lr: target },
+      // restart: a net that already overshot may be stuck in saturated/dead regions
+      reset: true,
     },
   }
 }

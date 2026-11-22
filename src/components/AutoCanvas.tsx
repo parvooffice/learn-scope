@@ -4,7 +4,8 @@ import { useUI } from '../store/ui'
 interface Props {
   /** Draw in CSS pixels; the context is already scaled for the device pixel ratio. */
   draw: (ctx: CanvasRenderingContext2D, width: number, height: number) => void
-  height: number
+  /** fixed CSS pixels, or a function of the measured width */
+  height: number | ((width: number) => number)
   label: string
   className?: string
   style?: CSSProperties
@@ -16,7 +17,17 @@ interface Props {
 }
 
 /** A canvas that fills its parent's width, stays crisp on retina screens, and redraws on resize/theme change. */
-export function AutoCanvas({ draw, height, label, className, style, onClick, onMove, onLeave, fixedWidth }: Props) {
+export function AutoCanvas({
+  draw,
+  height,
+  label,
+  className,
+  style,
+  onClick,
+  onMove,
+  onLeave,
+  fixedWidth,
+}: Props) {
   const ref = useRef<HTMLCanvasElement>(null)
   const wrap = useRef<HTMLDivElement>(null)
   const drawRef = useRef(draw)
@@ -28,18 +39,19 @@ export function AutoCanvas({ draw, height, label, className, style, onClick, onM
     if (!canvas) return
     const render = () => {
       const w = fixedWidth ?? Math.max(10, Math.floor(wrap.current?.clientWidth ?? 300))
+      const h = typeof height === 'function' ? Math.max(1, Math.round(height(w))) : height
       const dpr = Math.min(2, window.devicePixelRatio || 1)
-      if (canvas.width !== Math.floor(w * dpr) || canvas.height !== Math.floor(height * dpr)) {
+      if (canvas.width !== Math.floor(w * dpr) || canvas.height !== Math.floor(h * dpr)) {
         canvas.width = Math.floor(w * dpr)
-        canvas.height = Math.floor(height * dpr)
+        canvas.height = Math.floor(h * dpr)
         canvas.style.width = `${w}px`
-        canvas.style.height = `${height}px`
+        canvas.style.height = `${h}px`
       }
       const ctx = canvas.getContext('2d')
       if (!ctx) return
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-      ctx.clearRect(0, 0, w, height)
-      drawRef.current(ctx, w, height)
+      ctx.clearRect(0, 0, w, h)
+      drawRef.current(ctx, w, h)
     }
     render()
     const ro = new ResizeObserver(render)
@@ -61,15 +73,15 @@ export function AutoCanvas({ draw, height, label, className, style, onClick, onM
   return (
     <div ref={wrap} className="w-full" style={{ lineHeight: 0 }}>
       <canvas
-      ref={ref}
-      role="img"
-      aria-label={label}
-      className={className}
-      style={style}
-      onClick={onClick ? (e) => onClick(e, dims(e).w, dims(e).h) : undefined}
-      onMouseMove={onMove ? (e) => onMove(e, dims(e).w, dims(e).h) : undefined}
-      onMouseLeave={onLeave}
-    />
+        ref={ref}
+        role="img"
+        aria-label={label}
+        className={className}
+        style={style}
+        onClick={onClick ? (e) => onClick(e, dims(e).w, dims(e).h) : undefined}
+        onMouseMove={onMove ? (e) => onMove(e, dims(e).w, dims(e).h) : undefined}
+        onMouseLeave={onLeave}
+      />
     </div>
   )
 }

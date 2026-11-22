@@ -17,13 +17,35 @@ export function Timeline() {
   const mb = history.totalBytes / (1024 * 1024)
 
   return (
-    <div className="border-t border-line bg-panel px-3 py-2" role="region" aria-label="Training timeline">
+    <div
+      className="border-t border-line bg-panel px-3 py-2"
+      role="region"
+      aria-label="Training timeline"
+    >
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-1.5">
-          <Btn onClick={() => nudge(-10)} ariaLabel="Back 10 snapshots" className="!px-2 !py-1">«</Btn>
-          <Btn onClick={() => nudge(-1)} ariaLabel="Previous snapshot" title="Left arrow" className="!px-2 !py-1">‹</Btn>
-          <Btn onClick={() => nudge(1)} ariaLabel="Next snapshot" title="Right arrow (while time travelling)" className="!px-2 !py-1">›</Btn>
-          <Btn onClick={() => nudge(10)} ariaLabel="Forward 10 snapshots" className="!px-2 !py-1">»</Btn>
+          <Btn onClick={() => nudge(-10)} ariaLabel="Back 10 snapshots" className="!px-2 !py-1">
+            «
+          </Btn>
+          <Btn
+            onClick={() => nudge(-1)}
+            ariaLabel="Previous snapshot"
+            title="Left arrow"
+            className="!px-2 !py-1"
+          >
+            ‹
+          </Btn>
+          <Btn
+            onClick={() => nudge(1)}
+            ariaLabel="Next snapshot"
+            title="Right arrow (while time travelling)"
+            className="!px-2 !py-1"
+          >
+            ›
+          </Btn>
+          <Btn onClick={() => nudge(10)} ariaLabel="Forward 10 snapshots" className="!px-2 !py-1">
+            »
+          </Btn>
         </div>
         <div className="relative min-w-[160px] flex-1">
           <input

@@ -68,7 +68,11 @@ describe('URL config encoding', () => {
   })
   it('returns null for garbage and repairs bad values', () => {
     expect(decodeConfig('%%%not-base64')).toBeNull()
-    const fixed = sanitizeConfig({ lr: 1e9, layers: [{ units: 999, activation: 'evil' }], dataset: 'nope' })
+    const fixed = sanitizeConfig({
+      lr: 1e9,
+      layers: [{ units: 999, activation: 'evil' }],
+      dataset: 'nope',
+    })
     expect(fixed.lr).toBeLessThanOrEqual(3)
     expect(fixed.layers[0].units).toBe(16)
     expect(fixed.layers[0].activation).toBe('tanh')

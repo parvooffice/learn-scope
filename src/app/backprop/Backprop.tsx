@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { applyStep, initialParams, runExplainer, type ExplainerParams } from '../../engine/tiny/explainer'
+import {
+  applyStep,
+  initialParams,
+  runExplainer,
+  type ExplainerParams,
+} from '../../engine/tiny/explainer'
 import { Btn, Panel, Slider } from '../../components/ui'
 import { LineChart } from '../../viz/LineChart'
 
@@ -41,7 +46,10 @@ export default function Backprop() {
 
   useEffect(() => {
     if (!auto) return
-    timer.current = setInterval(() => setStep((s) => (s >= STEP_COUNT - 1 ? (setAuto(false), s) : s + 1)), 1700)
+    timer.current = setInterval(
+      () => setStep((s) => (s >= STEP_COUNT - 1 ? (setAuto(false), s) : s + 1)),
+      1700,
+    )
     return () => clearInterval(timer.current)
   }, [auto])
 
@@ -92,16 +100,25 @@ export default function Backprop() {
       phase: 'backward',
       title: '5 · Backward pass: start at the loss',
       idea: 'Backpropagation asks: "if I nudge ŷ a tiny bit, how much does L change?" That sensitivity is the derivative ∂L/∂ŷ. It is the first link of the chain; every other gradient is built from it.',
-      lines: [`∂L/∂ŷ = 2(ŷ − t) = 2(${f(r.yhat)} − ${f(t, 2)}) = ${f(r.manual.yhat)}`, `autograd says: ${f(r.auto.yhat)}`],
+      lines: [
+        `∂L/∂ŷ = 2(ŷ − t) = 2(${f(r.yhat)} − ${f(t, 2)}) = ${f(r.manual.yhat)}`,
+        `autograd says: ${f(r.auto.yhat)}`,
+      ],
     },
     {
       phase: 'backward',
       title: '6 · Backward: through the output neuron',
       idea: 'Chain rule: (how L changes with ŷ) × (how ŷ changes with the thing). Since ŷ = Σ v·h + c, the "how ŷ changes with v" is just h, and with h it is just v.',
       lines: [
-        ...r.h.map((h, j) => `∂L/∂v${sub(j + 1)} = ∂L/∂ŷ · h${sub(j + 1)} = ${f(r.manual.yhat)} · ${f(h)} = ${f(r.manual.v[j])}`),
+        ...r.h.map(
+          (h, j) =>
+            `∂L/∂v${sub(j + 1)} = ∂L/∂ŷ · h${sub(j + 1)} = ${f(r.manual.yhat)} · ${f(h)} = ${f(r.manual.v[j])}`,
+        ),
         `∂L/∂c = ∂L/∂ŷ · 1 = ${f(r.manual.c)}`,
-        ...v.map((vj, j) => `∂L/∂h${sub(j + 1)} = ∂L/∂ŷ · v${sub(j + 1)} = ${f(r.manual.yhat)} · ${sgn(vj)} = ${f(r.manual.h[j])}`),
+        ...v.map(
+          (vj, j) =>
+            `∂L/∂h${sub(j + 1)} = ∂L/∂ŷ · v${sub(j + 1)} = ${f(r.manual.yhat)} · ${sgn(vj)} = ${f(r.manual.h[j])}`,
+        ),
       ],
     },
     {
@@ -170,9 +187,19 @@ export default function Backprop() {
     setStep(0)
     setAuto(false)
   }
-  const setX = (i: 0 | 1, val: number) => setParams((p) => ({ ...p, x: i === 0 ? [val, p.x[1]] : [p.x[0], val] }))
+  const setX = (i: 0 | 1, val: number) =>
+    setParams((p) => ({ ...p, x: i === 0 ? [val, p.x[1]] : [p.x[0], val] }))
 
-  const edge = (x1: number, y1: number, x2: number, y2: number, wv: number, hi: boolean, grad?: number, tpos = 0.5) => {
+  const edge = (
+    x1: number,
+    y1: number,
+    x2: number,
+    y2: number,
+    wv: number,
+    hi: boolean,
+    grad?: number,
+    tpos = 0.5,
+  ) => {
     const mx = x1 + (x2 - x1) * tpos
     const my = y1 + (y2 - y1) * tpos
     const sw = 0.8 + Math.min(4, Math.abs(wv) * 3)
@@ -187,11 +214,31 @@ export default function Backprop() {
           strokeWidth={hi ? sw + 2 : sw}
           opacity={hi ? 1 : 0.5}
         />
-        <text x={mx} y={my - 3} textAnchor="middle" fontSize="10" className="num" fill="var(--text)" stroke="var(--panel)" strokeWidth="3" paintOrder="stroke">
+        <text
+          x={mx}
+          y={my - 3}
+          textAnchor="middle"
+          fontSize="10"
+          className="num"
+          fill="var(--text)"
+          stroke="var(--panel)"
+          strokeWidth="3"
+          paintOrder="stroke"
+        >
           {f(wv, 2)}
         </text>
         {grad !== undefined && (
-          <text x={mx} y={my + 10} textAnchor="middle" fontSize="10" className="num" fill="var(--warn)" stroke="var(--panel)" strokeWidth="3" paintOrder="stroke">
+          <text
+            x={mx}
+            y={my + 10}
+            textAnchor="middle"
+            fontSize="10"
+            className="num"
+            fill="var(--warn)"
+            stroke="var(--panel)"
+            strokeWidth="3"
+            paintOrder="stroke"
+          >
             ∂ {f(grad, 3)}
           </text>
         )}
@@ -199,14 +246,37 @@ export default function Backprop() {
     )
   }
 
-  const node = (id: string, cx: number, cy: number, top: string, lines: { t: string; color?: string }[], hi: boolean, rad = 24) => (
+  const node = (
+    id: string,
+    cx: number,
+    cy: number,
+    top: string,
+    lines: { t: string; color?: string }[],
+    hi: boolean,
+    rad = 24,
+  ) => (
     <g key={id}>
-      <circle cx={cx} cy={cy} r={rad} fill="var(--panel2)" stroke={hi ? 'var(--accent)' : 'var(--border)'} strokeWidth={hi ? 3 : 1.5} />
+      <circle
+        cx={cx}
+        cy={cy}
+        r={rad}
+        fill="var(--panel2)"
+        stroke={hi ? 'var(--accent)' : 'var(--border)'}
+        strokeWidth={hi ? 3 : 1.5}
+      />
       <text x={cx} y={cy + 4} textAnchor="middle" fontSize="13" fontWeight="600" fill="var(--text)">
         {top}
       </text>
       {lines.map((ln, i) => (
-        <text key={i} x={cx} y={cy + rad + 14 + i * 12} textAnchor="middle" fontSize="10" className="num" fill={ln.color ?? 'var(--muted)'}>
+        <text
+          key={i}
+          x={cx}
+          y={cy + rad + 14 + i * 12}
+          textAnchor="middle"
+          fontSize="10"
+          className="num"
+          fill={ln.color ?? 'var(--muted)'}
+        >
           {ln.t}
         </text>
       ))}
@@ -219,8 +289,10 @@ export default function Backprop() {
         <div>
           <h1 className="text-xl font-semibold">Backpropagation, step by step</h1>
           <p className="text-sm text-muted">
-            A 2-3-1 network with real numbers. Press <b>Next</b> to walk through one full training step: forward, loss, backward, update.
-            <span className="text-accent"> Blue/red lines are weights;</span> <span className="text-warn">amber ∂ values are gradients.</span>
+            A 2-3-1 network with real numbers. Press <b>Next</b> to walk through one full training
+            step: forward, loss, backward, update.
+            <span className="text-accent"> Blue/red lines are weights;</span>{' '}
+            <span className="text-warn">amber ∂ values are gradients.</span>
           </p>
         </div>
 
@@ -229,18 +301,74 @@ export default function Backprop() {
             title="The network"
             info="Each circle is a neuron and each line a weight (red = positive, blue = negative). Values appear as the computation reaches them. During the backward pass, amber numbers show the gradient ∂L/∂(thing): how much the loss would change if that thing changed a little."
           >
-            <svg viewBox="0 0 710 410" className="w-full" role="img" aria-label="Diagram of the 2-3-1 network showing values and gradients for the current step">
+            <svg
+              viewBox="0 0 710 410"
+              className="w-full"
+              role="img"
+              aria-label="Diagram of the 2-3-1 network showing values and gradients for the current step"
+            >
               {/* input -> hidden edges */}
               {NODE.h.map((h, j) => [
-                edge(NODE.x1.x + 24, NODE.x1.y, h.x - 24, h.y, w[j][0], active(1) || active(8), g4 ? r.manual.w[j][0] : undefined, 0.3),
-                edge(NODE.x2.x + 24, NODE.x2.y, h.x - 24, h.y, w[j][1], active(1) || active(8), g4 ? r.manual.w[j][1] : undefined, 0.3),
+                edge(
+                  NODE.x1.x + 24,
+                  NODE.x1.y,
+                  h.x - 24,
+                  h.y,
+                  w[j][0],
+                  active(1) || active(8),
+                  g4 ? r.manual.w[j][0] : undefined,
+                  0.3,
+                ),
+                edge(
+                  NODE.x2.x + 24,
+                  NODE.x2.y,
+                  h.x - 24,
+                  h.y,
+                  w[j][1],
+                  active(1) || active(8),
+                  g4 ? r.manual.w[j][1] : undefined,
+                  0.3,
+                ),
               ])}
               {/* hidden -> output edges */}
-              {NODE.h.map((h, j) => edge(h.x + 24, h.y, NODE.y.x - 24, NODE.y.y, v[j], active(3) || active(6), g2 ? r.manual.v[j] : undefined, 0.5))}
-              <line x1={NODE.y.x + 24} y1={NODE.y.y} x2={NODE.L.x - 24} y2={NODE.L.y} stroke="var(--muted)" strokeWidth={active(4) || active(5) ? 4 : 1.5} opacity={0.7} />
+              {NODE.h.map((h, j) =>
+                edge(
+                  h.x + 24,
+                  h.y,
+                  NODE.y.x - 24,
+                  NODE.y.y,
+                  v[j],
+                  active(3) || active(6),
+                  g2 ? r.manual.v[j] : undefined,
+                  0.5,
+                ),
+              )}
+              <line
+                x1={NODE.y.x + 24}
+                y1={NODE.y.y}
+                x2={NODE.L.x - 24}
+                y2={NODE.L.y}
+                stroke="var(--muted)"
+                strokeWidth={active(4) || active(5) ? 4 : 1.5}
+                opacity={0.7}
+              />
 
-              {node('x1', NODE.x1.x, NODE.x1.y, 'x₁', [{ t: f(x[0], 2), color: 'var(--text)' }], false)}
-              {node('x2', NODE.x2.x, NODE.x2.y, 'x₂', [{ t: f(x[1], 2), color: 'var(--text)' }], false)}
+              {node(
+                'x1',
+                NODE.x1.x,
+                NODE.x1.y,
+                'x₁',
+                [{ t: f(x[0], 2), color: 'var(--text)' }],
+                false,
+              )}
+              {node(
+                'x2',
+                NODE.x2.x,
+                NODE.x2.y,
+                'x₂',
+                [{ t: f(x[1], 2), color: 'var(--text)' }],
+                false,
+              )}
               {NODE.h.map((h, j) =>
                 node(
                   `h${j}`,
@@ -250,7 +378,9 @@ export default function Backprop() {
                   [
                     ...(showZ ? [{ t: `z = ${f(r.z[j], 3)}` }] : [{ t: `b = ${f(b[j], 2)}` }]),
                     ...(showH ? [{ t: `h = ${f(r.h[j], 3)}`, color: 'var(--text)' }] : []),
-                    ...(g2 && !g3 ? [{ t: `∂h ${f(r.manual.h[j], 3)}`, color: 'var(--warn)' }] : []),
+                    ...(g2 && !g3
+                      ? [{ t: `∂h ${f(r.manual.h[j], 3)}`, color: 'var(--warn)' }]
+                      : []),
                     ...(g3 ? [{ t: `∂z ${f(r.manual.z[j], 3)}`, color: 'var(--warn)' }] : []),
                     ...(g4 ? [{ t: `∂b ${f(r.manual.b[j], 3)}`, color: 'var(--warn)' }] : []),
                   ],
@@ -263,7 +393,9 @@ export default function Backprop() {
                 NODE.y.y,
                 'ŷ',
                 [
-                  ...(showY ? [{ t: `ŷ = ${f(r.yhat, 3)}`, color: 'var(--text)' }] : [{ t: `c = ${f(c, 2)}` }]),
+                  ...(showY
+                    ? [{ t: `ŷ = ${f(r.yhat, 3)}`, color: 'var(--text)' }]
+                    : [{ t: `c = ${f(c, 2)}` }]),
                   ...(g1 ? [{ t: `∂ŷ ${f(r.manual.yhat, 3)}`, color: 'var(--warn)' }] : []),
                   ...(g2 ? [{ t: `∂c ${f(r.manual.c, 3)}`, color: 'var(--warn)' }] : []),
                 ],
@@ -274,19 +406,35 @@ export default function Backprop() {
                 NODE.L.x,
                 NODE.L.y,
                 'L',
-                [{ t: `t = ${f(t, 2)}` }, ...(showL ? [{ t: `L = ${f(r.loss, 4)}`, color: 'var(--text)' }] : [])],
+                [
+                  { t: `t = ${f(t, 2)}` },
+                  ...(showL ? [{ t: `L = ${f(r.loss, 4)}`, color: 'var(--text)' }] : []),
+                ],
                 active(4),
                 22,
               )}
               <text x="355" y="16" textAnchor="middle" fontSize="11" fill="var(--muted)">
-                {cur.phase === 'backward' ? '⟵ gradients flow backward' : cur.phase === 'forward' ? 'values flow forward ⟶' : ''}
+                {cur.phase === 'backward'
+                  ? '⟵ gradients flow backward'
+                  : cur.phase === 'forward'
+                    ? 'values flow forward ⟶'
+                    : ''}
               </text>
             </svg>
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <Btn onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0} ariaLabel="Previous step">
+              <Btn
+                onClick={() => setStep((s) => Math.max(0, s - 1))}
+                disabled={step === 0}
+                ariaLabel="Previous step"
+              >
                 ← Back
               </Btn>
-              <Btn variant="primary" onClick={() => setStep((s) => Math.min(STEP_COUNT - 1, s + 1))} disabled={step === STEP_COUNT - 1} ariaLabel="Next step">
+              <Btn
+                variant="primary"
+                onClick={() => setStep((s) => Math.min(STEP_COUNT - 1, s + 1))}
+                disabled={step === STEP_COUNT - 1}
+                ariaLabel="Next step"
+              >
                 Next →
               </Btn>
               <Btn onClick={() => setAuto((a) => !a)}>{auto ? '⏸ Pause' : '▶ Auto-play'}</Btn>
@@ -313,23 +461,73 @@ export default function Backprop() {
               info="This panel explains the current step and shows the exact arithmetic with the live numbers from the diagram."
             >
               <p className="text-sm leading-relaxed">{cur.idea}</p>
-              <pre className="num scroll-thin mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded-lg border border-line bg-panel2 p-2 text-[11.5px] leading-relaxed text-ink" aria-live="polite">
+              <pre
+                className="num scroll-thin mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded-lg border border-line bg-panel2 p-2 text-[11.5px] leading-relaxed text-ink"
+                aria-live="polite"
+              >
                 {cur.lines.join('\n')}
               </pre>
             </Panel>
-            <Panel title="Play with it" info="Change the inputs, the target or the learning rate; every number above is recomputed instantly by the autograd engine.">
+            <Panel
+              title="Play with it"
+              info="Change the inputs, the target or the learning rate; every number above is recomputed instantly by the autograd engine."
+            >
               <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-                <Slider label="x₁" value={x[0]} min={-1.5} max={1.5} step={0.05} onChange={(val) => setX(0, val)} format={(n) => n.toFixed(2)} />
-                <Slider label="x₂" value={x[1]} min={-1.5} max={1.5} step={0.05} onChange={(val) => setX(1, val)} format={(n) => n.toFixed(2)} />
-                <Slider label="target t" value={t} min={-1.5} max={1.5} step={0.05} onChange={(val) => setParams((p) => ({ ...p, t: val }))} format={(n) => n.toFixed(2)} />
-                <Slider label="learning rate" value={lr} min={0.01} max={1.5} step={0.01} onChange={setLr} format={(n) => n.toFixed(2)} />
+                <Slider
+                  label="x₁"
+                  value={x[0]}
+                  min={-1.5}
+                  max={1.5}
+                  step={0.05}
+                  onChange={(val) => setX(0, val)}
+                  format={(n) => n.toFixed(2)}
+                />
+                <Slider
+                  label="x₂"
+                  value={x[1]}
+                  min={-1.5}
+                  max={1.5}
+                  step={0.05}
+                  onChange={(val) => setX(1, val)}
+                  format={(n) => n.toFixed(2)}
+                />
+                <Slider
+                  label="target t"
+                  value={t}
+                  min={-1.5}
+                  max={1.5}
+                  step={0.05}
+                  onChange={(val) => setParams((p) => ({ ...p, t: val }))}
+                  format={(n) => n.toFixed(2)}
+                />
+                <Slider
+                  label="learning rate"
+                  value={lr}
+                  min={0.01}
+                  max={1.5}
+                  step={0.01}
+                  onChange={setLr}
+                  format={(n) => n.toFixed(2)}
+                />
               </div>
             </Panel>
-            <Panel title="Loss over updates" info="Each time you apply an update the loss is recorded. A well-chosen learning rate makes it fall smoothly toward zero; a too-large learning rate makes it bounce or blow up (try 1.5).">
+            <Panel
+              title="Loss over updates"
+              info="Each time you apply an update the loss is recorded. A well-chosen learning rate makes it fall smoothly toward zero; a too-large learning rate makes it bounce or blow up (try 1.5)."
+            >
               {losses.length > 1 ? (
-                <LineChart series={[{ label: 'loss', color: '#2dd4bf', x: losses.map((_, i) => i), y: losses }]} label="Loss after each update" height={120} yMin={0} />
+                <LineChart
+                  series={[
+                    { label: 'loss', color: '#2dd4bf', x: losses.map((_, i) => i), y: losses },
+                  ]}
+                  label="Loss after each update"
+                  height={120}
+                  yMin={0}
+                />
               ) : (
-                <p className="text-xs text-muted">Press “Apply update” or “Train ×100” to see the loss fall.</p>
+                <p className="text-xs text-muted">
+                  Press “Apply update” or “Train ×100” to see the loss fall.
+                </p>
               )}
             </Panel>
           </div>

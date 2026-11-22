@@ -39,7 +39,9 @@ export const saturatedUnits: Rule = ({ history, config }) => {
       label: 'Switch saturated layers to ReLU and restart',
       patch: {
         layers: config.layers.map((l) =>
-          l.activation === 'tanh' || l.activation === 'sigmoid' ? { ...l, activation: 'relu' as const } : l,
+          l.activation === 'tanh' || l.activation === 'sigmoid'
+            ? { ...l, activation: 'relu' as const }
+            : l,
         ),
       },
       reset: true,

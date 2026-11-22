@@ -13,7 +13,11 @@ function Card({ d }: { d: Diagnosis }) {
   return (
     <article
       className={`rounded-lg border bg-panel2 p-2.5 ${
-        d.severity === 'critical' ? 'border-pos/50' : d.severity === 'warn' ? 'border-warn/50' : 'border-line'
+        d.severity === 'critical'
+          ? 'border-pos/50'
+          : d.severity === 'warn'
+            ? 'border-warn/50'
+            : 'border-line'
       }`}
       aria-label={`${d.severity} diagnosis: ${d.title}`}
     >
@@ -57,7 +61,9 @@ export function DoctorPanel() {
     >
       <div aria-live="polite" className="space-y-2">
         {diagnoses.length === 0 ? (
-          <p className="text-xs text-muted">Watching the run… diagnoses appear after a few dozen steps.</p>
+          <p className="text-xs text-muted">
+            Watching the run… diagnoses appear after a few dozen steps.
+          </p>
         ) : (
           diagnoses.map((d) => <Card key={d.id} d={d} />)
         )}

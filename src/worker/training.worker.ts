@@ -4,6 +4,7 @@ import type { Trainer } from '../engine/tf/trainer'
 import type { FromWorker, ToWorker } from './protocol'
 import type { PlaygroundConfig, Snapshot } from '../engine/types'
 import { generateDataset, splitDataset } from '../engine/datasets/toy'
+import { initTf } from '../engine/tf/backend'
 
 /**
  * The training worker owns the model. The UI thread never touches TensorFlow.js, so heavy
@@ -23,38 +24,12 @@ const MIN_TICK_MS = 33
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
 
-async function initTf() {
+async function initEngine() {
   if (tf) return
-  const notes: string[] = []
-  const lib = await import('@tensorflow/tfjs')
-  let webgpuLoaded = false
-  try {
-    await import('@tensorflow/tfjs-backend-webgpu')
-    webgpuLoaded = true
-  } catch (e) {
-    notes.push(`WebGPU backend failed to load: ${String(e)}`)
-  }
-  const hasGpu = typeof navigator !== 'undefined' && 'gpu' in navigator
-  for (const name of ['webgpu', 'webgl', 'cpu']) {
-    if (name === 'webgpu' && !(webgpuLoaded && hasGpu)) {
-      notes.push('WebGPU is not available in this browser.')
-      continue
-    }
-    try {
-      const ok = await lib.setBackend(name)
-      await lib.ready()
-      if (ok && lib.getBackend() === name) {
-        tf = lib
-        TrainerCtor = (await import('../engine/tf/trainer')).Trainer
-        post({ type: 'ready', backend: name, notes })
-        return
-      }
-      notes.push(`Backend ${name} could not be initialised.`)
-    } catch (e) {
-      notes.push(`Backend ${name} failed: ${String(e)}`)
-    }
-  }
-  throw new Error('No TensorFlow.js backend could be initialised.')
+  const init = await initTf()
+  tf = init.tf
+  TrainerCtor = (await import('../engine/tf/trainer')).Trainer
+  post({ type: 'ready', backend: init.backend, notes: init.notes })
 }
 
 async function stopLoop() {
@@ -71,7 +46,7 @@ function emit(s: Snapshot) {
 
 async function build(cfg: PlaygroundConfig) {
   await stopLoop()
-  await initTf()
+  await initEngine()
   trainer?.dispose()
   config = cfg
   const ds = generateDataset(cfg.dataset, cfg.samples, cfg.noise, cfg.seed)

@@ -31,10 +31,22 @@ describe('backprop explainer engine', () => {
       fn(b, -h)
       return (runExplainer(a).loss - runExplainer(b).loss) / (2 * h)
     }
-    expect(r.auto.w[1][0]).toBeCloseTo(bump((q, d) => (q.w[1][0] += d)), 6)
-    expect(r.auto.v[2]).toBeCloseTo(bump((q, d) => (q.v[2] += d)), 6)
-    expect(r.auto.b[0]).toBeCloseTo(bump((q, d) => (q.b[0] += d)), 6)
-    expect(r.auto.c).toBeCloseTo(bump((q, d) => (q.c += d)), 6)
+    expect(r.auto.w[1][0]).toBeCloseTo(
+      bump((q, d) => (q.w[1][0] += d)),
+      6,
+    )
+    expect(r.auto.v[2]).toBeCloseTo(
+      bump((q, d) => (q.v[2] += d)),
+      6,
+    )
+    expect(r.auto.b[0]).toBeCloseTo(
+      bump((q, d) => (q.b[0] += d)),
+      6,
+    )
+    expect(r.auto.c).toBeCloseTo(
+      bump((q, d) => (q.c += d)),
+      6,
+    )
   })
 
   it('a small gradient step lowers the loss', () => {

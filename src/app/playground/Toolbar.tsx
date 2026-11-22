@@ -34,8 +34,18 @@ export function Toolbar() {
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2" role="toolbar" aria-label="Training controls">
-      <Btn variant="primary" onClick={toggle} disabled={!ready} ariaLabel={running ? 'Pause training' : 'Start training'} title="Space">
+    <div
+      className="flex flex-wrap items-center gap-2"
+      role="toolbar"
+      aria-label="Training controls"
+    >
+      <Btn
+        variant="primary"
+        onClick={toggle}
+        disabled={!ready}
+        ariaLabel={running ? 'Pause training' : 'Start training'}
+        title="Space"
+      >
         {running ? '⏸ Pause' : '▶ Play'}
       </Btn>
       <Btn onClick={() => step(1)} disabled={!ready} title="Right arrow">
@@ -47,7 +57,11 @@ export function Toolbar() {
       <Btn onClick={reset} disabled={!ready} title="R">
         ↺ Reset
       </Btn>
-      <div className="ml-1 flex items-center gap-1" role="group" aria-label="Training speed (steps per frame)">
+      <div
+        className="ml-1 flex items-center gap-1"
+        role="group"
+        aria-label="Training speed (steps per frame)"
+      >
         <span className="text-xs text-muted">speed</span>
         {SPEEDS.map((s) => (
           <button
@@ -66,7 +80,11 @@ export function Toolbar() {
       <div className="ml-auto flex items-center gap-2">
         {backend && (
           <Badge tone={backend === 'webgpu' ? 'accent' : backend === 'webgl' ? 'ok' : 'warn'}>
-            {backend === 'webgpu' ? 'GPU · WebGPU' : backend === 'webgl' ? 'GPU · WebGL' : 'CPU fallback'}
+            {backend === 'webgpu'
+              ? 'GPU · WebGPU'
+              : backend === 'webgl'
+                ? 'GPU · WebGL'
+                : 'CPU fallback'}
           </Badge>
         )}
         <Btn onClick={share} title="Copy a link that reopens this exact experiment">

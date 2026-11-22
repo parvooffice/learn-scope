@@ -1,5 +1,10 @@
 import { create } from 'zustand'
-import { DEFAULT_CONFIG, snapshotBytes, type PlaygroundConfig, type Snapshot } from '../engine/types'
+import {
+  DEFAULT_CONFIG,
+  snapshotBytes,
+  type PlaygroundConfig,
+  type Snapshot,
+} from '../engine/types'
 import { HistoryBuffer } from '../lib/ringBuffer'
 import { diagnose } from '../doctor/doctor'
 import type { Diagnosis, Fix } from '../doctor/types'
@@ -104,7 +109,12 @@ export const useRun = create<RunState>((set, get) => {
           case 'built':
             pending = []
             history.clear()
-            set((st) => ({ version: st.version + 1, selectedStep: null, diagnoses: [], error: null }))
+            set((st) => ({
+              version: st.version + 1,
+              selectedStep: null,
+              diagnoses: [],
+              error: null,
+            }))
             if (wantRunAfterBuild) {
               wantRunAfterBuild = false
               send({ type: 'start' })
@@ -173,7 +183,8 @@ export const useRun = create<RunState>((set, get) => {
     goLive: () => set({ selectedStep: null }),
     nudge: (delta) => {
       const { selectedStep } = get()
-      const cur = selectedStep === null ? history.length - 1 : history.nearest(selectedStep, (s) => s.step)
+      const cur =
+        selectedStep === null ? history.length - 1 : history.nearest(selectedStep, (s) => s.step)
       const next = Math.max(0, Math.min(history.length - 1, cur + delta))
       if (delta > 0 && next === history.length - 1 && selectedStep === null) return
       get().scrubTo(next)

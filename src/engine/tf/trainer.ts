@@ -179,7 +179,9 @@ export class Trainer {
       const b1 = 0.9
       const b2 = 0.999
       const m = (st.m ? st.m.mul(b1).add(g.mul(1 - b1)) : g.mul(1 - b1)) as TFNS.Tensor
-      const vv = (st.v ? st.v.mul(b2).add(g.square().mul(1 - b2)) : g.square().mul(1 - b2)) as TFNS.Tensor
+      const vv = (
+        st.v ? st.v.mul(b2).add(g.square().mul(1 - b2)) : g.square().mul(1 - b2)
+      ) as TFNS.Tensor
       tf.keep(m)
       tf.keep(vv)
       st.m?.dispose()

@@ -74,7 +74,10 @@ export class HistoryBuffer<T> {
       if (keyOf(this.items[mid]) < key) lo = mid + 1
       else hi = mid
     }
-    if (lo > 0 && Math.abs(keyOf(this.items[lo - 1]) - key) <= Math.abs(keyOf(this.items[lo]) - key))
+    if (
+      lo > 0 &&
+      Math.abs(keyOf(this.items[lo - 1]) - key) <= Math.abs(keyOf(this.items[lo]) - key)
+    )
       return lo - 1
     return lo
   }

@@ -57,18 +57,23 @@ export function NetworkGraph({ config, snap, selected, onSelect, height = 360 }:
     // edges
     if (snap) {
       let maxAbs = 1e-9
-      for (const wt of snap.weights) for (let i = 0; i < wt.W.length; i++) maxAbs = Math.max(maxAbs, Math.abs(wt.W[i]))
+      for (const wt of snap.weights)
+        for (let i = 0; i < wt.W.length; i++) maxAbs = Math.max(maxAbs, Math.abs(wt.W[i]))
       type E = { a: NodePos; b: NodePos; w: number }
       const edges: E[] = []
       snap.weights.forEach((wt, l) => {
         const { nin, nout } = specs[l]
         for (let i = 0; i < nin; i++)
-          for (let j = 0; j < nout; j++) edges.push({ a: pos[l][i], b: pos[l + 1][j], w: wt.W[i * nout + j] })
+          for (let j = 0; j < nout; j++)
+            edges.push({ a: pos[l][i], b: pos[l + 1][j], w: wt.W[i * nout + j] })
       })
       edges.sort((p, q) => Math.abs(p.w) - Math.abs(q.w))
       for (const e of edges) {
         const m = Math.abs(e.w) / maxAbs
-        ctx.strokeStyle = rgb(diverging(Math.sign(e.w) * 1, [120, 130, 145]), 0.12 + 0.75 * Math.sqrt(m))
+        ctx.strokeStyle = rgb(
+          diverging(Math.sign(e.w) * 1, [120, 130, 145]),
+          0.12 + 0.75 * Math.sqrt(m),
+        )
         ctx.lineWidth = 0.3 + 4.2 * m
         ctx.beginPath()
         ctx.moveTo(e.a.x + r, e.a.y)
@@ -89,13 +94,8 @@ export function NetworkGraph({ config, snap, selected, onSelect, height = 360 }:
           const st = snap.layers[n.layer]
           const m = st.unitMean[n.unit] ?? 0
           const act = specs[n.layer].activation
-          let t = 0.5
-          if (act === 'tanh') t = (m + 1) / 2
-          else if (act === 'sigmoid') t = m
-          else {
-            const mx = Math.max(0.5, ...st.unitMean)
-            t = m / mx
-          }
+          const t =
+            act === 'tanh' ? (m + 1) / 2 : act === 'sigmoid' ? m : m / Math.max(0.5, ...st.unitMean)
           fill = rgb(viridis(t))
           dead = (act === 'relu' || act === 'gelu') && m < 1e-3 && st.deadPct > 0
         }
@@ -172,7 +172,10 @@ export function NetworkGraph({ config, snap, selected, onSelect, height = 360 }:
         >
           layer {hover.n.layer + 1} · unit {hover.n.unit + 1}
           <br />
-          mean activation <span className="num">{(snap.layers[hover.n.layer].unitMean[hover.n.unit] ?? 0).toFixed(3)}</span>
+          mean activation{' '}
+          <span className="num">
+            {(snap.layers[hover.n.layer].unitMean[hover.n.unit] ?? 0).toFixed(3)}
+          </span>
         </div>
       )}
     </div>

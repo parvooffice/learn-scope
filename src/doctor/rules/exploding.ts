@@ -26,7 +26,9 @@ export const explodingGradients: Rule = ({ history, config }) => {
     evidence: {
       step: hit.step,
       chart: 'grad',
-      detail: broken ? 'first step with non-finite values' : `gradient norm ${fmt(worst)} at this step`,
+      detail: broken
+        ? 'first step with non-finite values'
+        : `gradient norm ${fmt(worst)} at this step`,
     },
     fix: {
       label: `Lower the learning rate to ${niceLr(config.lr / 10)} and restart`,

@@ -3,7 +3,13 @@ import { useUI } from '../store/ui'
 import type { ChartId } from '../doctor/types'
 
 /** "ⓘ What am I looking at?" — a short plain-English explanation of a chart. */
-export function Info({ text, title = 'What am I looking at?' }: { text: ReactNode; title?: string }) {
+export function Info({
+  text,
+  title = 'What am I looking at?',
+}: {
+  text: ReactNode
+  title?: string
+}) {
   const [open, setOpen] = useState(false)
   const id = useId()
   const ref = useRef<HTMLSpanElement>(null)
@@ -176,7 +182,15 @@ type BtnProps = {
   ariaLabel?: string
   className?: string
 }
-export function Btn({ children, onClick, variant = 'ghost', disabled, title, ariaLabel, className = '' }: BtnProps) {
+export function Btn({
+  children,
+  onClick,
+  variant = 'ghost',
+  disabled,
+  title,
+  ariaLabel,
+  className = '',
+}: BtnProps) {
   const base =
     'inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors select-none'
   const styles = {
@@ -198,7 +212,13 @@ export function Btn({ children, onClick, variant = 'ghost', disabled, title, ari
   )
 }
 
-export function Badge({ children, tone = 'muted' }: { children: ReactNode; tone?: 'muted' | 'ok' | 'warn' | 'pos' | 'accent' }) {
+export function Badge({
+  children,
+  tone = 'muted',
+}: {
+  children: ReactNode
+  tone?: 'muted' | 'ok' | 'warn' | 'pos' | 'accent'
+}) {
   const t = {
     muted: 'border-line text-muted',
     ok: 'border-ok/40 text-ok',
@@ -206,5 +226,9 @@ export function Badge({ children, tone = 'muted' }: { children: ReactNode; tone?
     pos: 'border-pos/50 text-pos',
     accent: 'border-accent/50 text-accent',
   }[tone]
-  return <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] ${t}`}>{children}</span>
+  return (
+    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] ${t}`}>
+      {children}
+    </span>
+  )
 }

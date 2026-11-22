@@ -33,7 +33,8 @@ describe('Value autograd: gradients match numerical differentiation (<1e-6)', ()
   it('pow', () => expectGradsMatch(([a, b]) => a.pow(3).add(b.pow(2)), [0.8, -1.1]))
   it('tanh', () => expectGradsMatch(([a, b]) => a.mul(b).tanh(), [0.5, -0.9]))
   it('sigmoid', () => expectGradsMatch(([a, b]) => a.add(b).sigmoid(), [0.5, -0.9]))
-  it('exp / log', () => expectGradsMatch(([a, b]) => a.exp().add(b.mul(b).add(1).log()), [0.2, 1.3]))
+  it('exp / log', () =>
+    expectGradsMatch(([a, b]) => a.exp().add(b.mul(b).add(1).log()), [0.2, 1.3]))
   it('relu (away from the kink)', () =>
     expectGradsMatch(([a, b]) => a.mul(b).relu().add(b.relu()), [0.7, 1.4]))
   it('a value used twice accumulates gradients', () => {
