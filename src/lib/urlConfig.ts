@@ -43,14 +43,13 @@ export function sanitizeConfig(raw: unknown): PlaygroundConfig {
   }
 }
 
+// btoa/atob exist in browsers, workers and Node >= 16. Our JSON is plain ASCII so no UTF-8 dance needed.
 function toBase64Url(s: string): string {
-  const b64 = typeof btoa === 'function' ? btoa(s) : Buffer.from(s, 'binary').toString('base64')
-  return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 }
 function fromBase64Url(s: string): string {
   const b64 = s.replace(/-/g, '+').replace(/_/g, '/')
-  const pad = b64 + '='.repeat((4 - (b64.length % 4)) % 4)
-  return typeof atob === 'function' ? atob(pad) : Buffer.from(pad, 'base64').toString('binary')
+  return atob(b64 + '='.repeat((4 - (b64.length % 4)) % 4))
 }
 
 /** Config -> short URL-safe string. */
