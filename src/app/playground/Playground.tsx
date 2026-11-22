@@ -10,6 +10,7 @@ import { Panel } from '../../components/ui'
 import { DecisionBoundary, EXTENT, GRID } from '../../viz/DecisionBoundary'
 import { NetworkGraph, type NeuronRef } from '../../viz/NetworkGraph'
 import { NeuronPreview } from '../../viz/NeuronPreview'
+import { LossLandscape } from './LossLandscape'
 import { generateDataset, splitDataset } from '../../engine/datasets/toy'
 import { forwardGrid } from '../../engine/forward'
 import { layerSpecs } from '../../engine/types'
@@ -213,6 +214,7 @@ export default function Playground() {
               )}
             </div>
           </div>
+          <LossLandscape specs={specs} train={train} view={view} />
         </main>
 
         <aside
