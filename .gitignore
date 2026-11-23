@@ -15,3 +15,12 @@ resume/
 scripts/build-resume.mjs
 docs/profile/
 docs/prompts/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+.nicegui/
+build/

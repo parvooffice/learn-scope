@@ -1,95 +1,93 @@
 # Architecture
 
-## Overview
+## The one idea
+
+**The UI never trains, and the trainer never draws.** Training happens on a background thread that appends *snapshots*
+to a bounded history. Every view in the app is a pure function of one snapshot, so the same code draws the live head
+and any point in the past. That is what makes time travel, the Model Doctor and the Compare page cheap.
 
 ```
-src/
-  app/            pages: Landing (+Hero), playground/, backprop/, mnist/, About
-  components/     Panel, Info ("What am I looking at?"), Slider, AutoCanvas, Header…
-  viz/            canvas visualisations: LineChart, Histogram, DecisionBoundary, NetworkGraph,
-                  NeuronPreview, MapGrid, ConfusionMatrix, DrawPad, DigitCanvas
-  engine/
-    tiny/         hand-written autograd (Value, MLP) + the backprop explainer's model
-    cpu/          dependency-free MLP with manual backprop (landing hero, gradient oracle)
-    tf/           TensorFlow.js: backend selection, playground Trainer, MnistTrainer, layer stats
-    datasets/     toy generators, MNIST loader (+ IndexedDB cache)
-    forward.ts    CPU forward pass used by the UI to draw boundaries/neuron previews from weights
-  worker/         training.worker.ts, mnist.worker.ts and their typed message protocols
-  doctor/         one file per rule in rules/, doctor.ts runs them, tests use synthetic histories
-  store/          zustand: ui (theme, highlight), run (playground + history), mnist, view
-  lib/            ring buffer, URL config encoding, colours, router, RNG, shortcuts, stats
+ Browser (NiceGUI + Plotly)            Python process
+ ┌───────────────────────┐  websocket  ┌────────────────────────────────────────────┐
+ │ charts, controls,     │ ◀─────────▶ │ ui/*.py pages (ui.timer refresh, 0.25 s)   │
+ │ draw pad              │             │   reads ▼              commands ▲          │
+ └───────────────────────┘             │ runner.Run  ── background thread ──┐       │
+                                       │   HistoryBuffer of Snapshots       ▼       │
+                                       │ Doctor(rules) ◀── Trainer (NumPy backprop) │
+                                       └────────────────────────────────────────────┘
 ```
 
-## Data flow (playground)
+## Layers
 
-```
- UI action ──send()──▶ worker (single message queue)
-                         │  Trainer.trainStep() × stepsPerTick   (TF.js, GPU)
-                         │  Trainer.snapshot(): metrics, full-batch gradient stats,
-                         │                      activation stats, weights
- history ◀─rAF flush──── postMessage(snapshot, [weight buffers])   (transferable)
-    │
-    ├─ views read viewSnapshot(selectedStep): the live head, or the time-travel target
-    └─ Doctor: diagnose(history) throttled to 4 Hz ─▶ diagnoses ─▶ evidence links
-```
+| Package / module                      | Responsibility                                                                                                                         |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `autograd.py`, `tinynet.py`           | Scalar reverse-mode autograd (`Value`) and a tiny MLP built on it. Used by the Backprop page and as a teaching reference.              |
+| `explainer.py`                        | The 2-3-1 network behind the Backprop page: autograd gradients **and** the chain rule written out by hand, compared on every call.     |
+| `activations.py`, `mlp.py`            | Vectorised NumPy MLP: forward, hand-derived backward, SGD / momentum / Adam, BCE-with-logits (stable), L2.                             |
+| `trainer.py`                          | One run's training state: data batches, the optimizer, live-adjustable lr / L2 / batch size, snapshot creation.                        |
+| `snapshots.py`, `stats.py`            | The snapshot record (weights, per-layer gradient / activation / weight statistics, metrics) and `HistoryBuffer`.                       |
+| `forward.py`, `landscape.py`          | Forward passes from stored weights (decision boundary, per-neuron maps) and the 2-D loss-landscape slice.                              |
+| `doctor/`                             | Seven pure rules over a list of snapshots. Thresholds are module constants so tests and readers see exactly what triggers a rule.      |
+| `runner.py`                           | `Run`: owns a `Trainer`, a history and a background thread; commands (play, pause, step, reset, configure, time travel).               |
+| `mnist/`                              | `layers.py` (im2col Conv2D, MaxPool2, Dense, ReLU, Flatten, softmax-CE, Adam), `trainer.py` (`MnistTrainer`, `MnistRun`), `draw.py`.  |
+| `config.py`                           | Frozen dataclasses for an experiment, sanitising of untrusted input and the URL encoding.                                              |
+| `ui/`                                 | `charts.py` (pure data → Plotly dict), `components.py` (frame, panels, settings), and one module per page.                             |
+| `app.py`                              | Routes and server start-up.                                                                                                            |
 
-- **The worker owns the model.** The UI thread never touches TensorFlow.js, so training cannot block rendering. The TF.js bundle (~2 MB) is a lazy chunk fetched only when a page that needs it opens; the first-load JS is 236 KB.
-- **A `built` message separates runs.** Everything before it belongs to the previous model, so late snapshots from an old run can never pollute a new run's history.
-- **Snapshots arrive batched per animation frame** (`requestAnimationFrame` flush) so React re-renders at most once per frame, however fast the worker is.
-- **Canvas, not DOM.** Charts and graphs draw to `<canvas>` (`AutoCanvas` handles resize and device-pixel-ratio). React only re-renders the small wrapper component when a new snapshot arrives.
+`ui/charts.py` has no NiceGUI imports, so every chart is testable without a browser.
 
-## Time travel
+## Decisions and why
 
-`HistoryBuffer` (src/lib/ringBuffer.ts) holds snapshots under **two limits: item count and bytes (150 MB)**. When a limit is hit it
-_thins the oldest half_ (keeps every second item) instead of dropping the oldest item, so you can still rewind to the very start of training
-while recent history stays dense. `selectedStep === null` means "follow live".
+**Snapshots store weights, and views are recomputed from them.** A snapshot is ~3 KB for the default network. The
+decision boundary, per-neuron maps and loss-landscape path are recomputed by `forward.py` from those weights, so scrubbing
+to step 40 shows exactly what the network looked like at step 40, and nothing else needs storing.
 
-## Decisions and deviations from the original brief (and why)
+**`HistoryBuffer` thins instead of dropping.** At the item or byte limit it keeps every second snapshot of the older
+half. The beginning of training (where the interesting failures are) is never thrown away; only its resolution drops.
 
-| Decision                                                                                                                                                      | Reason                                                                                                                                                                                                                            |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Decision boundary and neuron previews are computed on the main thread from the snapshot's weights** (`forward.ts`), not shipped as a grid in each snapshot. | The nets are tiny (≤16 units/layer), so a 48×48 forward pass is ~1–2 M multiply-adds. This keeps snapshots ~3 KB, makes time-travel exact for any step, and `forward.ts` is cross-checked against TF.js in a unit test.           |
-| **Custom training loop + hand-written SGD/momentum/Adam** instead of `model.fit` for the playground.                                                          | We need the gradients, a live-adjustable learning rate, and per-layer statistics at every snapshot. `model.fit` hides all three.                                                                                                  |
-| **Gradient statistics use the full training set** (one extra forward/backward per snapshot), not the last mini-batch.                                         | Mini-batch gradients are noisy; the Doctor's vanishing/exploding rules need a stable signal.                                                                                                                                      |
-| **`tf.layers` for MNIST**, custom loop only for batching.                                                                                                     | Convolutions are the point here; `tf.layers` gives conv/pool/dense with less code, and `trainOnBatch` is enough.                                                                                                                  |
-| **MNIST subset shipped with the app** (10k train + 2k test, 2.3 MB PNG, in `public/data`) and cached decoded in IndexedDB.                                    | Removes a runtime dependency on a third-party host and keeps the first load small. Regenerate with `scripts/make-mnist-subset.mjs` from the public "model-builder" sprite (`storage.googleapis.com/learnjs-data/model-builder/`). |
-| **Hash routing** (`#/playground?c=…`).                                                                                                                        | Works on any static host (also when opened from `dist/` via a plain file server) with no rewrite rules; the config in the hash is never sent to a server.                                                                         |
-| **No D3 DOM rendering**, only `d3-scale` / `d3-array`.                                                                                                        | Canvas + d3 scales keeps bundle small and redraws cheap.                                                                                                                                                                          |
-| **Project folder must not contain `#`.**                                                                                                                      | Vite's dev server fails to serve files from such paths (URL fragment). The project was moved to a clean path.                                                                                                                     |
-| **The saturation rule only fires while loss is still high.**                                                                                                  | During manual testing a converged spiral network legitimately saturates tanh units, and the rule produced a false alarm. Encoded in a unit test.                                                                                  |
+**The Doctor is rule-based.** Deterministic rules are explainable (each returns evidence with a step to jump to),
+unit-testable on synthetic histories and cheap. The cost: thresholds were tuned on a handful of runs.
 
-## Model Doctor
+**The Doctor is throttled, not debounced.** The first version debounced: "run 250 ms after the last snapshot". But
+snapshots arrive every ~30 ms, so the quiet period never came and the Doctor never ran while training. Now it runs at
+most every 0.25 s regardless of traffic (`DOCTOR_INTERVAL`). `tests/test_runner.py` has the regression test, and was
+verified to fail on the old code.
 
-Rules are pure functions `(history, config) → Diagnosis | null` in `src/doctor/rules/*.ts` with thresholds exported as constants.
-`doctor.ts` runs them all and orders by severity. If the run has exploded, the downstream symptoms are suppressed so the root cause is shown alone.
-A diagnosis has: id, severity, title, plain-English explanation, evidence `{step, chart, detail}` and an optional fix `{label, patch, reset}`.
-A fix that only changes `lr`/`l2`/`batchSize` and doesn't need a restart is applied **live** to the running optimizer.
+**Figures are plain dicts, not `plotly.graph_objects`.** Building validated `Figure` objects cost 40-60 ms each; with
+nine charts per refresh that starved the training thread (25 steps/s). Plain `{"data": [...], "layout": {...}}` dicts
+cost microseconds, plots are updated in place, and the playground went to ~86 steps/s with the UI attached. A test guards
+the refresh budget.
 
-## Performance notes (measure, don't guess)
+**The GIL is the real constraint.** Training (NumPy releases the GIL inside big operations, but tiny networks spend their
+time in Python) and the UI share one interpreter. `sys.setswitchinterval(0.001)` makes the trainer thread get the GIL back
+quickly while the UI thread builds charts.
 
-- First-load JS: 236 KB raw, 75 KB gzip (landing, router, hero). TF.js (~2 MB raw) loads lazily inside the workers.
-- MNIST CNN: ~2,100 img/s ≈ 4.7 s per 10k-image epoch on the developer's WebGPU laptop (shown live on the MNIST page).
-- The training loop yields at least every 33 ms (playground) so the main thread keeps rendering; the UI does one React update per animation frame.
-- Snapshot size is ~3 KB at the default architecture (observed: 422 snapshots ≈ 1.2 MB), so the 150 MB limit is far away for toy networks.
-- UI frame rate while training the default spiral config: **60 fps, p95 frame 16.9 ms, no long tasks** (headless Chrome, WebGPU, 1440×900; reproduce with `npm run perf`). Embedded or background browser tabs throttle `requestAnimationFrame`, so measure in a real foreground window.
-- Tiny networks are **latency-bound, not compute-bound**: on a GPU each step costs a few kernel launches, so a 2-8-8-1 net is not faster on WebGPU than on CPU. The GPU pays off on MNIST.
+**Config is data.** An experiment is a frozen dataclass, so it can be compared, copied, put in a URL and used as a
+dictionary key. Anything from a URL goes through `sanitize_config`: unknown values fall back to defaults, numbers are
+clamped, layer counts are capped and the string length is limited before decoding, so a hostile link cannot crash the
+app or request absurd sizes.
 
-## Compare (two runs)
+**Learning rate, L2 and batch size are live; everything else restarts.** Changing the dataset or the architecture
+changes the shape of the problem, so it rebuilds the run (`LIVE_KEYS` in `config.py`).
 
-`createRunStore(client)` in `src/store/run.ts` is a factory: each call gives an independent run with its own history buffer, timers, diagnoses and worker connection.
-The playground uses one shared instance (`useRun`); the Compare page creates two with `createWorkerClient()` (two workers) and tears them down on unmount.
-Data settings (dataset, noise, samples, split, seed) are shared so differences come only from the settings under test.
+**MNIST is NumPy end to end.** Convolution uses im2col (one matrix multiply per layer) and the backward pass uses
+col2im. Max-pool splits the gradient across ties. All layers are checked against finite differences. The data is a
+10,000 / 2,000 image subset shipped as a 1.9 MB `.npz`, so no download happens at run time.
 
-## Loss landscape
+**The loss landscape** follows Li et al.: two random directions, each rescaled per layer to that layer's weight norm, made
+orthogonal so that projecting any weight vector onto the plane gives exact coordinates (tested).
 
-`src/engine/landscape.ts` follows Li et al. (2018): two random directions in weight space, **Gram–Schmidt orthogonalised** and **rescaled per layer** to that layer's weight norm, then the loss is evaluated on a 31×31 grid of `w + α·d1 + β·d2` with the CPU forward pass (~150 ms, yielding to the UI every ~30 ms).
-The training path is each snapshot's weights projected onto (d1, d2). It can leave the picture because the real path uses many more than two directions; the panel says so.
+## Threading rules
 
-## A bug worth remembering
+- One `Run` per open page; it is closed when the browser disconnects (`on_disconnect`), which stops its thread.
+- All shared state sits behind one `RLock` inside `Run` / `MnistRun`. UI code reads through methods that copy under the lock
+  (`series()`, `view_snapshot()`), never the live arrays.
+- The UI polls `run.version` and only redraws when it changed or the run is playing.
+- The loss-landscape slice (about a second) runs in `nicegui.run.io_bound` so the page stays responsive.
 
-The Model Doctor was scheduled with a **debounce** (restart a 250 ms timer on every snapshot batch). At 60 fps a new batch arrives every frame, so the timer never fired and the Doctor silently starved; it only worked in a throttled embedded browser. It is now a **throttle** (one run scheduled at a time, reading the newest history), and the Playwright test asserts a diagnosis appears. I confirmed the test fails against the old code.
+## Known limits
 
-## Not built
-
-The tiny transformer mode, ONNX import and the hand-written WebGPU kernel benchmark are **not implemented**.
-The `Trainer` interface and the snapshot/protocol design leave room for them.
+- CPU only; fine for tiny networks and a 10k-image MNIST subset, not for large models.
+- One training thread per open tab: serving many viewers needs a bigger machine.
+- Redraws a few times per second over a websocket, so it is built for understanding rather than for 60 fps animation.
+- Tiny networks are init-sensitive (see the seed note in the README).

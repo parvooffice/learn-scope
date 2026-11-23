@@ -17,7 +17,7 @@ One section per milestone: the concepts (plain language), a self-quiz, and "how 
   3. backward pass: compute the **gradient** (how the loss changes if each parameter changes a little),
   4. update: nudge every parameter against its gradient.
      Repeat thousands of times.
-- Where in the code: `src/engine/tf/trainer.ts` → `trainStep()` is exactly this loop.
+- Where in the code: `learnscope/trainer.py` → `Trainer.train_step()` is exactly this loop.
 
 **Quiz**
 
@@ -33,7 +33,7 @@ One section per milestone: the concepts (plain language), a self-quiz, and "how 
 
 </details>
 
-**In an interview:** "Training is repeated forward pass, loss, backward pass and update; I built both a from-scratch version and a TensorFlow.js one so I can show the same loop at two levels."
+**In an interview:** "Training is repeated forward pass, loss, backward pass and update; I built it twice, a scalar autograd version and a vectorised NumPy one, so I can show the same loop at two levels."
 
 ---
 
@@ -44,7 +44,7 @@ One section per milestone: the concepts (plain language), a self-quiz, and "how 
 - A **derivative** is the slope: how much the output changes per tiny change of the input.
 - The **chain rule**: if `y = f(g(x))`, then `dy/dx = f'(g(x)) · g'(x)`. Slopes multiply along a chain.
 - A **computational graph**: every `+`, `×`, `tanh` creates a node that remembers its parents. `backward()` visits nodes in reverse (topological) order and applies each node's _local_ derivative times the gradient flowing in. If a value is used twice its gradients **add up** (`+=`).
-- Where: `src/engine/tiny/value.ts`. Tests prove the gradients match numerical differentiation to < 1e-6 (`value.test.ts`).
+- Where: `learnscope/autograd.py`. Tests prove the gradients match numerical differentiation to < 1e-6 (`tests/test_autograd.py`).
 
 **Your turn:** write `backward` for `mul` and `tanh` (EXERCISES.md #1).
 
@@ -52,7 +52,7 @@ One section per milestone: the concepts (plain language), a self-quiz, and "how 
 
 1. For `out = a × b`, what are `d out/da` and `d out/db`?
 2. Why does `backward()` need a topological order?
-3. Why do we write `this.grad += ...` and not `=`?
+3. Why do we write `self.grad += ...` and not `=`?
 4. How do we know our gradients are right?
 
 <details><summary>Answers</summary>
@@ -60,7 +60,7 @@ One section per milestone: the concepts (plain language), a self-quiz, and "how 
 1. `b` and `a`.
 2. A node's gradient is complete only after _all_ nodes that use it have sent theirs; reverse topological order guarantees that.
 3. A value can feed several operations; the total derivative is the sum of the contributions (multivariable chain rule).
-4. Numerical gradient check: `(f(x+h) − f(x−h)) / 2h` must match the analytic gradient (`value.test.ts`).
+4. Numerical gradient check: `(f(x+h) − f(x−h)) / 2h` must match the analytic gradient (`tests/test_autograd.py`).
 
 </details>
 
@@ -103,8 +103,8 @@ One section per milestone: the concepts (plain language), a self-quiz, and "how 
 - **SGD**: `p -= lr·g`. **Momentum**: keeps a running average of gradients (`m = 0.9m + g`), so steps smooth out and speed up along consistent directions. **Adam**: also divides by a running average of squared gradients, giving every parameter its own step size.
 - **Learning rate (lr)**: too small, slow; too large, overshoot and diverge.
 - **Train/test split**: test points are never trained on; they measure generalisation.
-- Why the worker? TensorFlow.js work and per-step readbacks would stutter the UI on the main thread.
-- Where: `src/engine/tf/trainer.ts` (optimizers are ~30 lines, in `applyUpdate`), `src/worker/training.worker.ts`.
+- Why a background thread? Training inside the web server's event loop would freeze every control; the `Run` object trains on its own thread and the UI only reads snapshots.
+- Where: `learnscope/mlp.py` (the optimizers are ~30 lines, in `Optimizer`), `learnscope/runner.py` (the thread).
 
 **Quiz**
 
@@ -151,8 +151,8 @@ One section per milestone: the concepts (plain language), a self-quiz, and "how 
 
 **Concepts**
 
-- Every few steps the worker records a **snapshot** (weights, per-layer gradient/activation stats, metrics). They are stored in a **bounded history buffer**; when memory or item limits are reached we thin out _older_ snapshots instead of dropping them.
-- Every view is a pure function of "the selected snapshot": that is why scrubbing redraws everything consistently. The decision boundary is recomputed on the main thread from that snapshot's weights.
+- Every few steps the training thread records a **snapshot** (weights, per-layer gradient/activation stats, metrics). They are stored in a **bounded history buffer**; when memory or item limits are reached we thin out _older_ snapshots instead of dropping them.
+- Every view is a pure function of "the selected snapshot": that is why scrubbing redraws everything consistently. The decision boundary is recomputed from that snapshot's weights (`learnscope/forward.py`).
 - Design lesson: keep views as pure functions of immutable data and time travel comes almost for free.
 
 **Quiz**
@@ -225,19 +225,19 @@ One section per milestone: the concepts (plain language), a self-quiz, and "how 
 
 **Concepts**
 
-- **Code-splitting** (`React.lazy` + dynamic `import()`) keeps the first load at 236 KB; TF.js (~2 MB) only loads when needed.
-- **Canvas** is much cheaper than thousands of DOM/SVG nodes for live-updating charts.
-- **Measure, don't guess:** the MNIST page reports live images/second.
-- Accessibility: every control has a label, canvases have `aria-label`s, keyboard shortcuts skip form fields, reduced-motion is respected.
+- **Cheap figures:** plain Plotly dicts instead of validated `Figure` objects (microseconds instead of 40-60 ms) keep the UI from starving the training thread.
+- **The GIL:** training and the UI share one interpreter, so every millisecond the UI spends building charts is a millisecond the trainer does not run.
+- **Measure, don't guess:** the MNIST page reports live images/second, and a test guards the time to build a refresh set.
+- Accessibility: every control has a label, the timeline and diagnosis cards have `aria-label`s, there are keyboard shortcuts and a light/dark theme.
 
 **Quiz**
 
-1. Why batch UI updates to one per animation frame?
+1. Why redraw the UI only a few times per second instead of after every training step?
 2. Why is a tiny network not necessarily faster on a GPU?
 
 <details><summary>Answers</summary>
 
-1. More frequent updates can't be shown anyway and would waste CPU on React renders.
+1. Faster updates can't be seen anyway and would waste CPU that the training thread needs (and flood the websocket).
 2. GPU work has fixed launch/transfer overhead; tiny matrices don't have enough parallel work to hide it.
 
 </details>

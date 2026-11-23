@@ -1,57 +1,68 @@
 # Your turn: exercises
 
 These are the parts worth writing **yourself**, because they are exactly what an interviewer will ask you to derive or sketch.
-The finished versions already exist in the repo; **delete the body, re-write it, and use the provided test to check yourself.**
+The finished versions already exist in the repo; **delete the body, re-write it, and use the tests to check yourself.**
 Commit your own version only after the tests pass.
 
 ## 1. Autograd: backward of `mul` and `tanh`
 
-File: `src/engine/tiny/value.ts`
+File: `learnscope/autograd.py`
 
-```ts
-mul(other: number | Value): Value {
-  const o = Value.of(other)
-  const out = new Value(this.data * o.data, [this, o], '×')
-  out._backward = () => {
-    // TODO: how much does the output change when `this` changes? when `o` changes?
-    // remember: multiply by out.grad (chain rule) and ACCUMULATE with +=
-  }
-  return out
-}
+```python
+def mul(self, other):
+    o = Value.of(other)
+    out = Value(self.data * o.data, (self, o), "*")
+
+    def _backward():
+        # TODO: how much does the output change when `self` changes? when `o` changes?
+        # remember: multiply by out.grad (chain rule) and ACCUMULATE with +=
+        ...
+
+    out._backward = _backward
+    return out
 ```
 
-Hints: for `out = a·b`, `∂out/∂a = b` and `∂out/∂b = a`. For `out = tanh(a)`, `∂out/∂a = 1 − out²`.
+Hints: for `out = a * b`, `d(out)/da = b` and `d(out)/db = a`. For `out = tanh(a)`, `d(out)/da = 1 - out**2`.
 
-Check: `npx vitest run src/engine/tiny` — the numerical-gradient tests (`tanh`, `add / mul`, whole MLP) must stay green.
-Bonus: break `+=` into `=` and read which test fails and why.
+Check: `python -m pytest tests/test_autograd.py`. The numerical-gradient tests (`tanh`, add / mul, the whole tiny MLP) must stay green.
+Bonus: change `+=` into `=` and read which test fails and why (a value used twice gets only one path's gradient).
 
-## 2. A dense layer's forward pass (no libraries)
+## 2. A dense layer's forward pass (no libraries beyond NumPy)
 
-File: `src/engine/forward.ts` → `forwardPoint`
+File: `learnscope/forward.py` → `forward_all`
 
-Write, for one layer, `a[j] = activation( b[j] + Σ_i x[i] · W[i][j] )` where `W` is stored row-major as `W[i * nout + j]`.
+Write, for one layer, `a = activation(a_prev @ W + b)` with `W` of shape `(nin, nout)`, the output layer being a sigmoid.
+Then do it once with plain Python loops for a single point and compare: `a[j] = act(b[j] + sum_i x[i] * W[i][j])`.
 
-Check: `npx vitest run src/lib/lib.test.ts` ("CPU forward pass matches a hand calculation") and
-`src/engine/tf/trainer.test.ts` ("TF metrics agree with the independent CPU forward pass").
-
-Bonus: compute by hand what `forwardPoint(specs, weights, 1, 0.5)` returns in the test and confirm.
+Check: `python -m pytest tests/test_engine.py` ("snapshot contents and agreement with the independent forward pass").
+Bonus: compute by hand what a 2-2-1 network with all-zero weights returns for any input, and confirm.
 
 ## 3. A Model Doctor rule, end to end
 
 Write a new rule **"loss is NaN-free but accuracy is stuck at 50%"** (the net is not learning at all):
 
-1. Create `src/doctor/rules/stuck.ts` exporting `const stuck: Rule`.
-2. Fire when there are ≥ 40 snapshots, the last 20 all have `trainAcc` within ±0.03 of 0.5, and `trainLoss` is within 0.02 of `ln 2 ≈ 0.693`.
-3. Evidence: the step where the stretch begins; chart `'loss'`. Fix: raise the learning rate ×3 (`reset: false`), or if `lr ≥ 0.3`, switch the optimizer to Adam (`reset: true`).
-4. Register it in `src/doctor/doctor.ts`.
-5. Write tests in `src/doctor/doctor.test.ts` using `mkHistory`: one history that must trigger, one healthy history that must not, one too-short history that must not.
+1. Add `stuck(ctx)` to `learnscope/doctor/rules.py`, returning a `Diagnosis` or `None`.
+2. Fire when there are at least 40 snapshots, the last 20 all have `train_acc` within ±0.03 of 0.5, and `train_loss` is within 0.02 of `ln 2 ≈ 0.693`.
+3. Evidence: the step where the stretch begins, chart `"loss"`. Fix: raise the learning rate ×3 (`reset=False`), or if `lr >= 0.3`, switch the optimizer to Adam (`reset=True`).
+4. Register it in the `RULES` list in `learnscope/doctor/__init__.py`.
+5. Write tests in `tests/test_doctor.py` using `mk_history` from `tests/helpers.py`: one history that must trigger, one healthy history that must not, one too-short history that must not.
 
-Check: `npx vitest run src/doctor`.
+Check: `python -m pytest tests/test_doctor.py`. Watch out: your rule must stay quiet on the existing healthy-run test.
 
-## 4. Read-and-explain (no code)
+## 4. A new optimizer
 
-Open `src/engine/tf/trainer.ts` and, in your own words, write down:
+File: `learnscope/mlp.py` → `Optimizer`
+
+Add **RMSProp** (`v = 0.9*v + 0.1*g**2; w -= lr * g / (sqrt(v) + 1e-8)`) as a fourth optimizer: add it to `OPTIMIZERS` in
+`learnscope/config.py`, give it a label, teach `Optimizer` in the same file about it (it has a hard-coded list of kinds), and extend `test_every_optimizer_reduces_the_loss` in `tests/test_engine.py`.
+Question to answer in a sentence: what does Adam add on top of RMSProp?
+
+## 5. Read-and-explain (no code)
+
+Open `learnscope/trainer.py` and, in your own words, write down:
 
 - why `snapshot()` computes the gradient on the **full** training set, and what it costs;
-- why `trainStep` wraps work in `tf.tidy`, and what would happen without it;
-- what Adam's `m` and `v` are and why there is a bias-correction term (`1 − β^t`).
+- why the trainer copies the weights into the snapshot instead of referencing them (see the "copies not views" test);
+- what Adam's `m` and `v` are and why there is a bias-correction term (`1 - beta**t`).
+
+Then open `learnscope/mnist/layers.py` and explain how `Conv2D.forward` turns a convolution into one matrix multiplication (im2col), and what `backward` has to do to undo it (col2im).

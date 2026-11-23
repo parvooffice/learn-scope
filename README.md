@@ -1,87 +1,101 @@
 # LearnScope — watch a neural network learn, live
 
-LearnScope trains neural networks **in your browser** (TensorFlow.js on WebGPU, with WebGL/CPU fallback) and
-shows everything while it happens: every weight, activation and gradient. You can pause, **rewind to any training
-step**, and let a rule-based **Model Doctor** diagnose what is going wrong and suggest a fix.
+LearnScope trains neural networks in front of you and shows everything while it happens: every weight, activation and
+gradient. You can pause, **rewind to any training step**, and let a rule-based **Model Doctor** diagnose what is going
+wrong and suggest a fix.
 
-- **Live demo:** _add your Vercel URL here after deploying (see "Deploy" below)_
+It is written in **Python**. The engine (autograd, backprop, optimizers, a convolutional network, the Doctor) is
+hand-written with **NumPy**, with no PyTorch or TensorFlow. The web UI is served from Python by **NiceGUI** with
+**Plotly** charts.
+
 - **GIF / video:** _record the 2-minute script in [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) and drop a GIF here_
 
 ## What is in it
 
-| Page               | What it does                                                                                                                                                                                                                                                       |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Playground**     | 5 toy datasets, a model builder (layers, neurons, activations, optimizer, LR, batch, L2), live decision boundary, network graph (click a neuron to see what it detects), loss/accuracy/gradient/weight/activation charts, time travel.                             |
-| **Model Doctor**   | 7 deterministic, unit-tested rules: exploding & vanishing gradients, dead ReLUs, saturated units, learning rate too high / too low, overfitting. Each gives severity, evidence (jumps to the step), explanation and a one-click fix.                               |
-| **Compare**        | Two experiments train side by side on the **same data**, each in its own worker: overlaid loss/accuracy curves, a scoreboard, two boundaries and graphs, and a Doctor per run. Five presets (Adam vs SGD, ReLU vs tanh, huge learning rate, small vs big net, L2). |
-| **Loss landscape** | In the Playground: a 2-D slice of the loss surface around the weights at the step you are viewing, with the training path drawn on it.                                                                                                                             |
-| **Backprop**       | A guided 10-step walk through forward pass → loss → chain rule backward → weight update on a 2-3-1 network, every number computed live by the from-scratch autograd engine.                                                                                        |
-| **MNIST**          | MLP or small CNN trained on 10k real digits on the GPU: filters, feature maps, confusion matrix, most-confused examples and a draw-a-digit pad.                                                                                                                    |
-| **Share**          | The full experiment config is encoded in the URL (`#/playground?c=…`).                                                                                                                                                                                             |
+| Page               | What it does                                                                                                                                                                                                                                  |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Playground**     | 5 toy datasets, a model builder (layers, neurons, activations, optimizer, LR, batch, L2), live decision boundary, network graph (click a neuron to see what it detects), loss/accuracy/gradient/weight/activation charts, time travel.          |
+| **Model Doctor**   | 7 deterministic, unit-tested rules: exploding & vanishing gradients, dead ReLUs, saturated units, learning rate too high / too low, overfitting. Each gives severity, evidence (jumps to the step), explanation and a one-click fix.            |
+| **Compare**        | Two runs on the **same data and seed**, side by side: overlaid loss/accuracy curves, two decision boundaries and a live "who is ahead" verdict. Defaults to Adam vs SGD; change anything on either side.                                      |
+| **Loss landscape** | In the Playground: a 2-D slice of the loss surface around the weights at the step you are viewing, with the training path drawn on it.                                                                                                        |
+| **Backprop**       | A guided 10-step walk through forward pass → loss → chain rule backward → weight update on a 2-3-1 network, every number computed live by the from-scratch autograd engine and cross-checked against a hand-written chain rule.                |
+| **MNIST**          | A small CNN (5,386 parameters) or an MLP (109,386) trained on 10k real digits in NumPy: filters, feature maps, confusion matrix, most confident mistakes and a draw-a-digit pad.                                                              |
+| **Share**          | The full experiment config is encoded in the URL (`/playground?c=…`) and sanitised on load.                                                                                                                                                   |
 
 ## Run it locally
 
-Requires Node 20+.
+Requires Python 3.10+ (developed on 3.14).
 
 ```bash
-npm install
-npm run dev        # http://localhost:5173
+python -m venv .venv
+.venv/Scripts/activate          # Windows;  source .venv/bin/activate on macOS/Linux
+pip install -e ".[dev]"
+python -m learnscope            # http://localhost:8080
 ```
 
-Other scripts:
+Settings through environment variables: `PORT` (default 8080), `HOST` (default `127.0.0.1`, set `0.0.0.0` to serve a
+network) and `LEARNSCOPE_SECRET` (session secret; random per start if unset).
 
 ```bash
-npm test           # unit tests (Vitest)
-npm run lint       # ESLint
-npm run typecheck  # tsc
-npm run build      # production build into dist/
-npm run preview    # serve dist/ at http://localhost:4173
-npm run perf       # measure FPS / long tasks while training (needs `npm run preview` running)
-npm run e2e        # Playwright end-to-end tests (uses installed Chrome; PW_CHANNEL=chromium for the bundled one)
+python -m pytest                # the whole test suite (114 tests, about 15 s)
 ```
 
-> **Windows note:** keep the project in a folder path **without a `#` character**. Vite's dev server cannot
-> serve files from such a path (this project was moved for exactly that reason).
+### Docker
 
-## Deploy (free, static)
+```bash
+docker build -t learnscope .
+docker run -p 8080:8080 learnscope
+```
 
-The app is a static site: no backend.
+### Hosting
 
-- **Vercel:** import the GitHub repo at <https://vercel.com/new>. The settings come from `vercel.json` (framework Vite, `npm ci`, `npm run build`, output `dist`), so leave the root directory as `/` and add no environment variables. It sets long-lived caching for the hashed files in `/assets` and a few basic security headers. It sets no Content-Security-Policy, because TensorFlow.js and WebGPU workers need testing before one is added.
-- **Anything else:** upload the contents of `dist/` (Netlify, GitHub Pages, S3…). Routing uses the URL hash, so no server rewrites are needed.
-- **Check a deployment:** open `<your-url>/#/playground?play=1`. Training starts by itself: the step counter should climb and the loss should fall. Press "Pause training", then drag the timeline back. Without WebGPU/WebGL the app falls back to the CPU backend, which is much slower (MNIST especially).
-- **Download and open:** `npm run build && npm run preview`.
+LearnScope is a stateful Python server (training runs on background threads), so it needs a host that runs a Python
+process, not a static-file host. Any of Render, Railway, Fly.io or a small VM works: start command `python -m learnscope`
+with `HOST=0.0.0.0` and `PORT` set by the platform (or use the Dockerfile). Every open browser tab runs its own
+training thread, so size the machine for the number of simultaneous viewers.
 
 ## Architecture in one picture
 
 ```
- React UI (main thread)                       Web Worker (training.worker.ts)
- ┌──────────────────────────┐   commands      ┌──────────────────────────────┐
- │ Zustand stores           │ ──────────────▶ │ TensorFlow.js (WebGPU/WebGL) │
- │ Canvas views             │                 │ hand-written training loop   │
- │ Model Doctor (pure fns)  │ ◀────────────── │ per-layer statistics         │
- │ history ring buffer      │  snapshots      └──────────────────────────────┘
- └──────────────────────────┘ (transferable)
+ Browser (NiceGUI + Plotly)            Python process
+ ┌───────────────────────┐  websocket  ┌────────────────────────────────────────────┐
+ │ charts, controls,     │ ◀─────────▶ │ ui/*.py pages (ui.timer refresh, 0.25 s)   │
+ │ draw pad              │             │   reads ▼              commands ▲          │
+ └───────────────────────┘             │ runner.Run  ── background thread ──┐       │
+                                       │   HistoryBuffer of Snapshots       ▼       │
+                                       │ Doctor(rules) ◀── Trainer (NumPy backprop) │
+                                       └────────────────────────────────────────────┘
 ```
 
 Details and the reasoning behind each decision: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Measured numbers (honest, on one machine)
 
-Measured on the developer's Windows laptop with WebGPU in Chrome/Edge. Your numbers will differ; the app shows live throughput on the MNIST page.
+Measured on the developer's Windows laptop (CPU only, Python 3.14, NumPy). Your numbers will differ.
 
-| Budget                                       | Target   | Measured                                                                                                      |
-| -------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------- |
-| First-load JavaScript (before TensorFlow.js) | < 300 KB | **236 KB** raw / **75 KB** gzip (`index` chunk)                                                               |
-| MNIST small CNN, 1 epoch on 10k images       | < ~60 s  | **~4.7 s** (≈2,100 img/s, WebGPU)                                                                             |
-| Snapshot memory                              | < 150 MB | hard limit 150 MB; ~3 KB per snapshot (observed: 422 snapshots ≈ 1.2 MB)                                      |
-| 60 fps UI while training                     | 60 fps   | **60 fps**, p95 frame 16.9 ms, 0 long tasks (headless Chrome + WebGPU, default spiral config; `npm run perf`) |
+| What                                              | Measured                                                                                               |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Playground step, default spiral (2×8 tanh, Adam)  | about 0.15 ms per training step; a snapshot costs about 1.1 ms                                        |
+| Playground with the live UI attached              | about 86 training steps per second (the UI thread and the training thread share the GIL)              |
+| MNIST small CNN (5,386 parameters)                | about 1,350 images/s; 92.4% test accuracy after 1 epoch, 96.9% after about 10 epochs (~75 s)          |
+| MNIST MLP 784-128-64-10 (109,386 parameters)      | about 4,700 images/s; 91.3% after 1 epoch, 93.6% after about 10 (it starts to overfit the 10k subset) |
+| Snapshot memory                                   | hard limit 150 MB; the history thins its oldest half instead of dropping the start of training        |
+
+A UI refresh set (all charts of a playground tick) is guarded by a test at under 25 ms.
+
+**Seed sensitivity.** A 2-layer tanh network on a spiral is sensitive to its random initialisation: the default seed (3)
+learns reliably, while for example seed 7 sits on a plateau (loss about 0.66) for thousands of steps. This is
+real behaviour of the model, not a bug, and exactly the kind of thing the Doctor and the Compare page are for.
 
 ## Tests
 
-- `npm test`: unit tests for the autograd engine (gradients vs numerical differentiation < 1e-6), the CPU MLP gradients, every Model Doctor rule (synthetic histories),
-  dataset generators, URL encoding, the history ring buffer, the TF.js trainers (checked against an independent CPU forward pass) and the backprop explainer.
-- `npm run e2e`: opens the playground, trains, checks the loss falls and the decision boundary changes, then scrubs the timeline back.
+`python -m pytest` runs 114 tests:
+
+- the scalar autograd engine against analytic derivatives and central differences (< 1e-6);
+- the NumPy MLP gradients against finite differences, optimizers, activations and the engine's determinism;
+- every Model Doctor rule on synthetic histories (trigger, no false alarm, too-short history), plus a regression test for the starvation bug described in the architecture notes;
+- the MNIST layers (convolution, max-pool, dense, softmax-CE) against numerical gradients;
+- loss-landscape directions and projection, the run thread (play, pause, time travel, reconfigure), config sanitising and URL round-trips, the drawing pad, and the chart builders (strict JSON, speed guard).
 
 ## What I learned / how it was built
 
@@ -89,9 +103,13 @@ Built with AI assistance. The learning material is in the repo so every part can
 
 - [docs/LEARNING.md](docs/LEARNING.md): concepts per milestone, with self-quiz questions and answers.
 - [docs/EXERCISES.md](docs/EXERCISES.md): the pieces worth writing yourself (backward of `mul` and `tanh`, a dense layer, a Doctor rule), with tests.
-- [docs/INTERVIEW.md](docs/INTERVIEW.md): 40+ interview questions about this project with draft answers.
+- [docs/INTERVIEW.md](docs/INTERVIEW.md): 50+ interview questions about this project with draft answers.
 - [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md): the 2-minute demo.
 
-## Browser support
+## History
 
-Current Chrome and Edge (WebGPU). Firefox and Safari fall back to WebGL or CPU with a visible notice.
+The first version of LearnScope was a TypeScript app (React + TensorFlow.js on WebGPU) and still lives on the `main`
+branch. This `python` branch is a rewrite of the whole project in Python: same ideas, new engine, server-side
+training. Trade-offs of the move: no in-browser GPU, a server process instead of a static site, and a lower redraw rate
+(a few updates per second over a websocket instead of 60 fps), in exchange for one language end to end, a NumPy
+engine that is easy to read and test, and a real convolution/backprop implementation instead of library calls.
