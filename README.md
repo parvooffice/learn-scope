@@ -47,8 +47,9 @@ npm run e2e        # Playwright end-to-end tests (uses installed Chrome; PW_CHAN
 
 The app is a static site: no backend.
 
-- **Vercel:** import the repo, framework preset _Vite_, build command `npm run build`, output `dist`. `vercel.json` is included.
+- **Vercel:** import the GitHub repo at <https://vercel.com/new>. The settings come from `vercel.json` (framework Vite, `npm ci`, `npm run build`, output `dist`), so leave the root directory as `/` and add no environment variables. It sets long-lived caching for the hashed files in `/assets` and a few basic security headers. It sets no Content-Security-Policy, because TensorFlow.js and WebGPU workers need testing before one is added.
 - **Anything else:** upload the contents of `dist/` (Netlify, GitHub Pages, S3…). Routing uses the URL hash, so no server rewrites are needed.
+- **Check a deployment:** open `<your-url>/#/playground?play=1`. Training starts by itself: the step counter should climb and the loss should fall. Press "Pause training", then drag the timeline back. Without WebGPU/WebGL the app falls back to the CPU backend, which is much slower (MNIST especially).
 - **Download and open:** `npm run build && npm run preview`.
 
 ## Architecture in one picture

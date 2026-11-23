@@ -5,3 +5,13 @@ test-results
 .vite
 *.local
 .claude
+.vercel
+.env
+.env.*
+!.env.example
+
+# Personal files: never publish these
+resume/
+scripts/build-resume.mjs
+docs/profile/
+docs/prompts/
